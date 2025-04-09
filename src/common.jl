@@ -3,10 +3,13 @@ Some convenient function to share among files/modules
 """
 module Commons
 
-using NPZ, NumericalIntegration, LinearInterpolations
+# using NPZ, NumericalIntegration, LinearInterpolations
 # using Interpolations, JLD2
+using OrdinaryDiffEq
 
-export logspace, read_ode, ODEData, get_end, LinearInterpolations, dump_struct, double_trap
+# export logspace, read_ode, ODEData, get_end, LinearInterpolations, dump_struct, double_trap
+
+export logspace, get_ρ_ϕ, get_H2_conf, get_end, check_array
 
 """
 returns an array whose elements are even spaced on logarithmic scale
@@ -15,6 +18,24 @@ function logspace(start, stop, num::Integer)
     return 10.0 .^ (range(start, stop, num))
 end
 
+"""
+energy density of inflaton field
+in conformal time (dϕ = dϕdτ)
+"""
+function get_ρ_ϕ(ϕ, dϕ, a, V)
+    return dϕ^2 / (2*a^2) + V(ϕ)
+end
+
+"""
+conformal Hubble squared  
+"""
+function get_H2_conf(ϕ, dϕ, a, ρ_r, V)
+    ρ_ϕ = get_ρ_ϕ(ϕ, dϕ, a, V)
+    return a^2 * (ρ_r + ρ_ϕ) / 3.
+end
+
+
+#=
 """
 struct to store the ODE data;
 note that they may have different length (due to the derivatives)
@@ -86,19 +107,31 @@ function get_end(ϕ::Vector, dϕ::Vector, a::Vector, τ::Vector, ϕₑ::Real)
     aₑ = itp(τₑ)
     return τₑ, aₑ
 end
+=#
 
+function get_end(sol::SciMLBase.ODESolution)
+    _a(t) = sol(t, Val{0}, idxs=3)
+    _ap(t) = sol(t, Val{1}, idxs=3)
+    _app(t) = sol(t, Val{2}, idxs=3)
 
-function get_t(τ::Vector, a::Vector)
-    t = cumul_integrate(τ, a)
-    return t
+    _ϵ₁(t) = @. 2 - _app(t) * _a(t) / _ap(t)^2
+    # normal Hubble
+    _H(t) = @. _ap(t) / _a(t)^2
+   
+    end_i = findfirst(x -> x >= 1.0, _ϵ₁(sol.t))
+    # @show _ϵ₁(sol.t[end_i]), log(_a(sol.t[end_i])), _H(sol.t[end_i])
+    a_end = _a(sol.t[end_i])
+    H_end = _H(sol.t[end_i])
+
+    # return _ϵ₁(sol.t)
+    return a_end, H_end
 end
 
-function get_ϵ₁(ode::ODEData)
-    dH = diff(ode.H) ./ diff(ode.τ) ./ ode.a[1:end-1]
-    return - dH ./ ode.H[1:end-1] .^ 2
-    #  return 1 / 2  * (ode.dϕ ./ ode.H ./ ode.a ).^ 2
+function check_array(x::Vector)
+    return any(x -> isnan(x) || !isfinite(x) ,x)
 end
 
+#=
 """
 Simple dump for struct, but instead of output to stdout, return a string for Logging
 """
@@ -109,47 +142,6 @@ function dump_struct(s)
     end
     return out
 end
-
-"""
-compute double integrals numerically using trapzoidal rule
-similar multiquad.jl convention
-∫_{x₁}^{x₂} ∫_{y₁(x)}^{y₂(x)} f(y, x) dy dx
-
-Here, f should take two float variables as indices
-"""
-function double_trap(f::Function, x1::Real, x2::Real, y1::Function, y2::Function, x::Vector, y::Vector)
-    """
-    integrate over y first
-    """
-    #=
-    function get_inner_int(x::Real)
-        _y1 = y1(x)
-        _y2 = y2(x)
-        # y1 > y2 rarely happens; still consider here
-        # Y_mask = _y1 < _y2 ? Y[Y .> _y1 .&& Y .< _y2] : -Y[Y .> _y2 .&& Y .< _y1]
-        Y_mask = Y[Y .> _y1 .&& Y .< _y2]
-        res = integrate(Y_mask, [f(y, x) for y in Y_mask])
-        @show _y1, _y2, Y_mask, res 
-        return res
-    end
-    
-    X_mask = X[X .> x1 .&& X .< x2]
-    return integrate(X_mask, [get_inner_int(x) for x in X_mask])
-    =#
-    """
-    integrate over y first
-    """
-    function get_inner_int(i::Int64)
-        i_start = findfirst(z -> z >= y1(x[i]), y)
-        i_end = findlast(z -> z <= y2(x[i]), y)
-        # @show i_start, i_end
-        return integrate(y[i_start:i_end], [f(z, i) for z in i_start:i_end])
-    end
-
-    i_start2 = findfirst(z -> z >= x1, x)
-    i_end2 = findlast(z -> z <= x2, x)
-    # @show i_start, i_end
-    return integrate(x[i_start2:i_end2], [get_inner_int(z) for z in i_start2:i_end2])
-end
+=#
 
 end

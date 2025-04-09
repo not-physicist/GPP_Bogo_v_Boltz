@@ -5,16 +5,9 @@ including inflaton decay and radiation energy density
 
 module EOMs 
 
+using ..Commons
+
 using StaticArrays, OrdinaryDiffEq, Logging
-
-function _get_ρ_ϕ(ϕ, dϕ, a, V)
-    return dϕ^2 / (2*a^2) + V(ϕ)
-end
-
-function _get_H2_conf(ϕ, dϕ, a, ρ_r, V)
-    ρ_ϕ = _get_ρ_ϕ(ϕ, dϕ, a, V)
-    return a^2 * (ρ_r + ρ_ϕ) / 3.
-end
 
 """
 Friedmann equation, EOM of inflaton field 
@@ -32,9 +25,9 @@ function _get_f(u, p, t)
     get_dV = p[2]
     Γ = p[3]
 
-    ρ_ϕ = _get_ρ_ϕ(ϕ, dϕ, a, get_V)
+    ρ_ϕ = get_ρ_ϕ(ϕ, dϕ, a, get_V)
     # conformal Hubble
-    H = sqrt(abs(_get_H2_conf(ϕ, dϕ, a, ρ_r, get_V)))
+    H = sqrt(abs(get_H2_conf(u..., get_V)))
 
     return SA[dϕ, 
               - (2*H + a*Γ)*dϕ - a^2 * get_dV(ϕ), 
@@ -47,7 +40,7 @@ function for isoutofdomain
 return true when H is sqrt of some negative number
 """
 function _H_neg(u, p, t)
-    H2 = _get_H2_conf(u[1], u[2], u[3], u[4], p[1])
+    H2 = get_H2_conf(u..., p[1])
     if H2 < 0.0 
         return true 
     else
@@ -60,13 +53,17 @@ Solve the EOMs given the parameters and initial conditions
 """
 function solve_eom(u₀::SVector{4, Float64},
                    tspan::Tuple{Float64, Float64},
-                   p::Tuple{Function, Function, Float64},
-                   cb)
+                   p::Tuple{Function, Function, Float64})
+    # callback: terminate at ρ_ϕ / ρ_tot = 1e-10
+    _Omega_ϕ(u) = get_ρ_ϕ(u[1], u[2], u[3], p[1]) / (u[4] + get_ρ_ϕ(u[1], u[2], u[3], p[1])) 
+    condition(u, t, integrator) = ( _Omega_ϕ(u) <= 1e-10)
+    # condition(u, t, integrator) = ( u[3] >= 100)
+    affect!(integrator) = terminate!(integrator)
+    cb = DiscreteCallback(condition, affect!)
 
     prob = ODEProblem(_get_f, u₀, tspan, p)
-    sol = solve(prob, Tsit5(), isoutofdomain=_H_neg, callback=cb)
+    sol = solve(prob, Tsit5(), isoutofdomain=_H_neg, reltol=1e-12, abstol=1e-12, callback=cb)
     
-    # return sol.t, sol[1, :], sol[2, :], sol[3, :], sol[4, :]
     return sol
 end
 

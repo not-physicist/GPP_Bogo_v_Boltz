@@ -7,8 +7,7 @@ module GPP_Bogo_v_Boltz
 # export TModes
 
 include("common.jl")
-# include("isocurv.jl")
-# include("pp.jl")
+include("pp.jl")
 include("eom.jl")
 
 include("Chaotic2.jl")
