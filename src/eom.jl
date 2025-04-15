@@ -56,7 +56,7 @@ function solve_eom(u₀::SVector{4, Float64},
                    p::Tuple{Function, Function, Float64})
     # callback: terminate at ρ_ϕ / ρ_tot = 1e-10
     _Omega_ϕ(u) = get_ρ_ϕ(u[1], u[2], u[3], p[1]) / (u[4] + get_ρ_ϕ(u[1], u[2], u[3], p[1])) 
-    condition(u, t, integrator) = ( _Omega_ϕ(u) <= 1e-10)
+    condition(u, t, integrator) = ( _Omega_ϕ(u) <= 1e-5)
     # condition(u, t, integrator) = ( u[3] >= 100)
     affect!(integrator) = terminate!(integrator)
     cb = DiscreteCallback(condition, affect!)
@@ -64,7 +64,7 @@ function solve_eom(u₀::SVector{4, Float64},
     prob = ODEProblem(_get_f, u₀, tspan, p)
     sol = solve(prob, Tsit5(), isoutofdomain=_H_neg, reltol=1e-12, abstol=1e-12, callback=cb)
     
-    return get_EOMData(sol, p[1])
+    return get_EOMData(sol, p[1], p[3])
 end
 
 """
@@ -86,7 +86,7 @@ end
 """
 from ODEsolution get ODEData
 """
-function get_EOMData(sol::SciMLBase.ODESolution, _V::Function)
+function get_EOMData(sol::SciMLBase.ODESolution, _V::Function, Γ::Float64)
     τ = sol.t 
     ϕ = sol[1, :]
     dϕ = sol[2, :]
@@ -96,24 +96,31 @@ function get_EOMData(sol::SciMLBase.ODESolution, _V::Function)
     
     ρ_ϕ = @. get_ρ_ϕ(ϕ, dϕ, a, _V)
     ρ_tot = ρ_r + ρ_ϕ
+    # normal Hubble
     H = @. sqrt(ρ_tot / 3.0)
     # a''/a according to second Friedmann
     app_a = @. (4 * a^2 * _V(ϕ) - dϕ^2) / 6.0
     # (a''/a)'
     app_a_p = diff(app_a[1:end-1]) ./ diff(τ[1:end-1])
+    Ω_r = @. ρ_r/(3*H^2)
+    Ω_ϕ = @. ρ_ϕ/(3*H^2)
 
     # @show size(ϕ), size(dϕ)
     # @show size(app_a), size(app_a_p)
     # @show size(H), size(ρ_r), size(ρ_ϕ)
 
     a_e, H_e = get_end(sol)
+    # reheating scale factor
+    dec_index = findfirst(x -> x <= Γ, H)
+    a_rh = a[dec_index]
+    # @show log(a_rh)
 
     # now need to discard the last two elements
     # as app_a_p miss these
     return EOMData(τ[1:end-2], ϕ[1:end-2], dϕ[1:end-2], 
             a[1:end-2], app_a[1:end-2], app_a_p,
-            H[1:end-2], ρ_r[1:end-2], ρ_ϕ[1:end-2],
-            a_e, H_e)
+            H[1:end-2], Ω_r[1:end-2], Ω_ϕ[1:end-2],
+            a_e, a_rh, H_e)
 end
 
 
@@ -129,10 +136,11 @@ struct EOMData{V<:Vector, F<:Real}
     app_a::V
     app_a_p::V
     H::V
-    ρ_r::V 
-    ρ_ϕ::V
+    Ω_r::V 
+    Ω_ϕ::V
 
     aₑ::F
+    a_rh::F  # scale factor at H = Γ
     Hₑ::F
 end
 
@@ -192,13 +200,17 @@ function save_eom_npz(eom::EOMData, data_dir)
     "app_a_p" => eom.app_a_p,
     "H" => eom.H,
 
-    "Omega_r" => eom.ρ_r ./ 3 .* eom.H .^ 2,
-    "Omega_phi" => eom.ρ_ϕ ./ 3 .* eom.H .^ 2,
+    "Omega_r" => eom.Ω_r,
+    "Omega_phi" => eom.Ω_ϕ,
+
+    "a_e" => eom.aₑ,
+    "a_rh" => eom.a_rh,
+    "H_e" => eom.Hₑ
     ))
 end
 
 function save_all(u₀, tspan, p, data_dir)
-    eom_data = @time EOMs.solve_eom(u₀, tspan, p)
+    eom_data = @time solve_eom(u₀, tspan, p)
 
     mkpath(data_dir)
     # serialize for Bogoliubov computation

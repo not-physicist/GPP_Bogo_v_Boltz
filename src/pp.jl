@@ -26,7 +26,7 @@ function get_diff_eq(u::SVector, p::Tuple, t::Real)
 end
 
 function get_alpha_beta_domain(u, p, t)
-    if (abs2(u[1]) - abs2(u[2]) - 1) < 1e-9
+    if (abs2(u[1]) - abs2(u[2]) - 1) < 1e-12
         return false
     else 
         return true
@@ -81,7 +81,7 @@ function get_f(k::Vector, eom)
     # @show α, β, ω
     # @show abs2.(β)
     n = abs2.(β)
-    ρ = @. ω * abs2(β)
+    ρ = @. ω * abs2(β) * k^3 / π^2
     error = @. abs2(α) - abs2(β) - 1
     return n, ρ, error
 end
@@ -89,7 +89,7 @@ end
 function save_all(num_k, data_dir)
     eom = deserialize(data_dir * "eom.dat")
 
-    k = @. logspace(log10(2), 2.0, num_k) * eom.aₑ * eom.Hₑ
+    k = @. logspace(log10(2), log10(500), num_k) * eom.aₑ * eom.Hₑ
     # k = @. [1.5] * a_e * H_e
     
     n, ρ, error = @time PPs.get_f(k, eom)
@@ -99,7 +99,7 @@ function save_all(num_k, data_dir)
     npzwrite(data_dir * "spec.npz", Dict(
         "k" => k ./ (eom.aₑ*eom.Hₑ),
         "n" => abs.(n),
-        "rho" => abs.(ρ ./ (eom.aₑ*eom.Hₑ)),
+        "rho" => abs.(ρ ./ (eom.aₑ*eom.Hₑ)^4),
         "error" => error
     ))
 end

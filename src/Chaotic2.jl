@@ -31,7 +31,7 @@ function save_eom(m::Float64, Γ::Float64, data_dir)
     dϕᵢ = - dVᵢ / (2*Hᵢ)
 
     u₀ = SA[ϕᵢ, dϕᵢ, 1.0, 0.0]
-    tspan = (0.0, 1e6)
+    tspan = (0.0, 1e7)
     _V(x) = get_V(x, m)
     _dV(x) = get_dV(x, m)
     p = (_V, _dV, Γ)
@@ -52,7 +52,8 @@ end
 =#
 
 function save_all()
-    m_array = logspace(-4, -6, 3)
+    # m_array = logspace(-4, -6, 3)
+    m_array = [1e-5]
     Γ_m_array = logspace(-3, -1, 3)
     num_k = 100
     # @show m_array, Γ_array, logspace(-3, -1, 3)
