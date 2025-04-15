@@ -1,12 +1,16 @@
 import matplotlib.pyplot as plt
+from matplotlib import colormaps
 import numpy as np
 
 from os import listdir 
 from os.path import join
 from pathlib import Path
 
+import formula
+
 def _latex_float(x):
     float_str = "{0:.2g}".format(x)
+    # print(float_str)
     if "e" in float_str:
         base, exponent = float_str.split("e")
         return r"{0} \cdot 10^{{{1}}}".format(base, int(exponent))
@@ -29,7 +33,6 @@ def plot_back_single(dn):
     
     a_e = data["a_e"]
     a_rh = data["a_rh"]
-    print(f"a_end = {a_e/a_rh}")
 
     fig, (ax1, ax2) = plt.subplots(ncols=2)
 
@@ -88,8 +91,7 @@ def plot_spec_single(dn):
     fig.savefig(fig_fn, bbox_inches="tight")
     plt.close(fig=fig)
 
-
-def draw_spec(dn, AX, label, m_phi):
+def draw_spec(dn, AX, label, m_phi, Γ, c, ls):
     # print(dn, label)
     fn = join(dn, "spec.npz")
     data = np.load(fn)
@@ -102,11 +104,14 @@ def draw_spec(dn, AX, label, m_phi):
     H_e = np.load(fn_ode)["H_e"]
     a_e = np.load(fn_ode)["a_e"]
     a_rh = np.load(fn_ode)["a_rh"]
-
-    AX.plot(k, ρ, label=label)
+    print(a_e/a_rh)
     
+    f = formula.get_f(k, a_e/a_rh, H_e, Γ)
+    Ω = formula.get_Ω_gw0(ρ, a_e/a_rh, H_e, Γ)
+    AX.plot(f, Ω, label=label, color=c, ls=ls)
+    
+    '''
     # analytical results
-    # print(m_phi, H_e)
     C = 1.5
     C_k = 1.5
     k_high = C_k * m_phi * a_rh / (a_e * H_e)
@@ -115,35 +120,64 @@ def draw_spec(dn, AX, label, m_phi):
     # ρ_ana2 = C*3/(64*np.pi) * (m_phi / H_e)**(3/2) * k**(-1/2) * np.exp(-2* (k/k_high)**2)
     AX.plot(k, ρ_ana, color="gray", ls="--")
     # AX.plot(k, ρ_ana2, color="gray", ls="--")
+    '''
 
     return None
 
 def plot_all(dn):
     fns = [x for x in listdir(dn)]
     fig, ax = plt.subplots()
+    
+    # linestyles for different Γ/m values
+    ls_array = ["solid", "dashed", "dashdot", "dotted"]
+    
+    # read the directory name first
+    m_array = []
+    Γm_array = []
+    for fn in fns:
+        m, Γ = fn.replace("m=", "").split("-Γ=")
+        m_array.insert(0, float(m))
+        Γm_array.insert(0, round(float(Γ)/float(m), 4))
+    m_array = list(set(m_array))
+    m_array.sort()
+    Γm_array = list(set(Γm_array))
+    Γm_array.sort()
+    # print(m_array, Γm_array)
 
+    # get color from m_array
+    cmap = colormaps['viridis']
+    color_array = cmap(np.log10(m_array)/np.log10(np.amin(m_array)))
+    # print(color_array)
+    
     for fn in fns:
         # print(fn)
         m, Γ = fn.replace("m=", "").split("-Γ=")
         m = float(m)
         Γ = float(Γ)
-        # print(m, Γ)
 
         full_dn = join(dn, fn)
-        # print(full_dn)
         plot_back_single(full_dn)
-       
-        label = rf"$m_\phi={_latex_float(m)}" + "m_{pl}" + rf", \Gamma={_latex_float(Γ/m)} m_\phi$"
+        
+        if Γm_array.index(round(Γ/m, 4)) == 0:
+            # when the ls is solid
+            label = rf"$m_\phi={_latex_float(m)}" + "m_{pl}$"
+            # + rf", \Gamma={_latex_float(Γ/m)} m_\phi$"
+        else:
+            label = None
         # print(label)
         # plot_spec_single(full_dn, ax, label)
-        draw_spec(full_dn, ax, label, m)
-
-    ax.set_xlabel("$k/a_e H_e$")
-    ax.set_ylabel(r"$a_0^4 \rho_{h, k} / (a_eH_e)^4$")
+        color = color_array[m_array.index(m)]
+        ls = ls_array[Γm_array.index(round(Γ/m, 4))]
+        draw_spec(full_dn, ax, label, m, Γ, color, ls)
+    
+    # ax.set_xlabel("$k/a_e H_e$")
+    # ax.set_ylabel(r"$a_0^4 \rho_{h, k} / (a_eH_e)^4$")
+    ax.set_xlabel("$f/Hz$")
+    ax.set_ylabel(r"$\Omega_{gw, 0}h^2 $")
     ax.set_xscale("log")
     ax.set_yscale("log")
-    ax.set_ylim(1e-10, 1)
-    ax.legend()
+    ax.set_ylim(1e-33, 1e-24)
+    ax.legend(loc="upper right")
 
     plt.tight_layout()
     plt.savefig(dn.replace("data", "figs") + "spec_all.pdf", bbox_inches="tight")

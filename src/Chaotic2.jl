@@ -52,8 +52,8 @@ end
 =#
 
 function save_all()
-    # m_array = logspace(-4, -6, 3)
-    m_array = [1e-5]
+    m_array = logspace(-4, -6, 3)
+    # m_array = [1e-5]
     Γ_m_array = logspace(-3, -1, 3)
     num_k = 100
     # @show m_array, Γ_array, logspace(-3, -1, 3)
