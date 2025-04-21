@@ -51,7 +51,7 @@ function save_f(num_k=100, data_dir=MODEL_DATA_DIR)
 end
 =#
 
-function save_all()
+function save_all_spec()
     m_array = logspace(-4, -6, 3)
     # m_array = [1e-5]
     Γ_m_array = logspace(-3, -1, 3)

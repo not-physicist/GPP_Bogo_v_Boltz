@@ -7,6 +7,7 @@ using StaticArrays, OrdinaryDiffEq, NPZ, NumericalIntegration, ProgressBars, Lin
 
 using ..Commons
 
+#=
 """
 Defines the differential equation to solve
 """
@@ -85,6 +86,82 @@ function get_f(k::Vector, eom)
     error = @. abs2(α) - abs2(β) - 1
     return n, ρ, error
 end
+=#
+
+function get_diff_eq_mode(u, ω2, t)
+    # @show t, real(1.0+1.0im * get_wronskian(u[1], u[2]))
+    χ = u[1]
+    ∂χ = u[2]
+
+    return @SVector [∂χ, -ω2(t)*χ]
+end
+
+"""
+should be i
+"""
+function get_wronskian(χ, ∂χ)
+    return χ * conj(∂χ) - conj(χ) * ∂χ
+end
+
+function get_wronskian_domain(u, p, t)
+    # assume get_wronskian returns a pure img. number
+    if real(1.0+1.0im * get_wronskian(u[1], u[2])) < 1e-5
+        return false
+    else 
+        return true
+    end
+end
+
+"""
+f = |β|^2 from mode functions χₖ, ∂χₖ
+"""
+function _get_f(ω, χ, ∂χ)
+    return abs2(ω * χ - 1.0im * ∂χ)/(2*ω)
+end
+
+function solve_diff_mode(k::Real, eom)
+    tspan = [eom.τ[1], eom.τ[end]]
+
+    # ω^2 = k^2 - a''/a
+    get_app_a = LinearInterpolations.Interpolate(eom.τ, eom.app_a)
+    get_ω2 = x -> k^2 - get_app_a(x)
+    ω₀ = sqrt(get_ω2(tspan[1])+0.0im)
+    ωₑ = sqrt(get_ω2(tspan[2])+0.0im)
+
+    # u₀ = @SVector [1/sqrt(2*k), -1.0im*k/sqrt(2*k)] 
+    u₀ = @SVector [1/sqrt(2*ω₀), -1.0im*ω₀/sqrt(2*ω₀)] 
+    
+    prob = ODEProblem{false}(get_diff_eq_mode, u₀, tspan, get_ω2)
+    sol = solve(prob, Vern9(), reltol=1e-10, abstol=1e-10, save_everystep=false, isoutofdomain=get_wronskian_domain)
+    χₑ = sol[1, end]
+    ∂χₑ = sol[2, end]
+
+    # wronskian
+    err = 1 + 1.0im * get_wronskian(χₑ, ∂χₑ)
+
+    n = _get_f(ωₑ, χₑ, ∂χₑ)
+    ρ = n * ωₑ* k^3 / π^2
+    return n, ρ, err
+end
+
+function solve_all_spec(k::Vector, eom)
+    if check_array(eom.app_a) | check_array(eom.app_a_p)
+        throw(ArgumentError("Input arrays contain NaN or Inf!"))
+    end
+
+    n = zeros(size(k))
+    ρ = zeros(size(k))
+    err = zeros(size(k))
+
+    @inbounds Threads.@threads for i in eachindex(k)
+        @inbounds res = solve_diff_mode(k[i], eom)
+        @inbounds n[i], ρ[i], err[i] = res
+        # @show res
+    end
+    
+    # @show n, ρ, error
+    return n, ρ, err
+end
 
 function save_all(num_k, data_dir)
     eom = deserialize(data_dir * "eom.dat")
@@ -92,15 +169,15 @@ function save_all(num_k, data_dir)
     k = @. logspace(log10(2), log10(500), num_k) * eom.aₑ * eom.Hₑ
     # k = @. [1.5] * a_e * H_e
     
-    n, ρ, error = @time PPs.get_f(k, eom)
-    # @show n, ρ, error
+    n, ρ, err = @time solve_all_spec(k, eom)
+    # @show n, ρ, err
     
     mkpath(data_dir)
     npzwrite(data_dir * "spec.npz", Dict(
         "k" => k ./ (eom.aₑ*eom.Hₑ),
         "n" => abs.(n),
         "rho" => abs.(ρ ./ (eom.aₑ*eom.Hₑ)^4),
-        "error" => error
+        "error" => err
     ))
 end
 
