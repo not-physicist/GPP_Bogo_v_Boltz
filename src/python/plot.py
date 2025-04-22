@@ -75,13 +75,14 @@ def plot_spec_single(dn):
     fig, ax = plt.subplots()
 
     ax.plot(k, n, label=r"$|\beta_k|^2$")
-    ax.plot(k, n[0] * k**(-9/2), label=r"$k^{-9/2}$", color="gray", ls="--")
-    ax.plot(k, ρ, label=r"$\omega_k |\beta_k|^2 / a_e H_e$")
+    ax.plot(k, n[0] * (k/k[0])**(-9/2), label=r"$k^{-9/2}$", color="gray", ls="--")
+    ax.plot(k, ρ, label=r"$\rho_k$")
     ax.plot(k, error, label="error")
 
     ax.set_xlabel("$k/a_e H_e$")
     ax.set_xscale("log")
     ax.set_yscale("log")
+    ax.set_ylim((1e-9, 1e3))
     ax.legend()
 
     fig.tight_layout()
@@ -91,7 +92,7 @@ def plot_spec_single(dn):
     fig.savefig(fig_fn, bbox_inches="tight")
     plt.close(fig=fig)
 
-def draw_spec(dn, AX, label, m_phi, Γ, c, ls):
+def draw_spec(dn, AX, AX2, label, m_phi, Γ, c, ls):
     # print(dn, label)
     fn = join(dn, "spec.npz")
     data = np.load(fn)
@@ -104,11 +105,14 @@ def draw_spec(dn, AX, label, m_phi, Γ, c, ls):
     H_e = np.load(fn_ode)["H_e"]
     a_e = np.load(fn_ode)["a_e"]
     a_rh = np.load(fn_ode)["a_rh"]
-    print(a_e/a_rh)
+    # print(a_e/a_rh)
     
+    AX.plot(k, ρ[0] * (k/k[0])**(-1/2), color="grey", ls="--")
+    AX.plot(k, ρ, ls=ls, color="k")
+
     f = formula.get_f(k, a_e/a_rh, H_e, Γ)
     Ω = formula.get_Ω_gw0(ρ, a_e/a_rh, H_e, Γ)
-    AX.plot(f, Ω, label=label, color=c, ls=ls)
+    AX2.plot(f, Ω, label=label, color=c, ls=ls)
     
     '''
     # analytical results
@@ -124,25 +128,39 @@ def draw_spec(dn, AX, label, m_phi, Γ, c, ls):
 
     return None
 
+def _get_m_Γ_list(fns):
+    # read the directory name first
+    m = []
+    Γm = []
+    for fn in fns:
+        m_i, Γ_i = fn.replace("m=", "").split("-Γ=")
+        m.insert(0, float(m_i))
+        Γm.insert(0, round(float(Γ_i)/float(m_i), 4))
+    m = list(set(m))
+    m.sort()
+    Γm = list(set(Γm))
+    Γm.sort()
+    # print(m_array, Γm_array)
+
+    return m, Γm
+
 def plot_all(dn):
-    fns = [x for x in listdir(dn)]
-    fig, ax = plt.subplots()
+    # remove test
+    fns = [x for x in listdir(dn) if x not in ["test"]]
+    # print(fns)
+    
+    # for ρ_k plot
+    fig = plt.figure(1)
+    ax = fig.add_subplot()
+
+    # for Ω_gw plot 
+    fig2 = plt.figure(2)
+    ax2 = fig2.add_subplot()
     
     # linestyles for different Γ/m values
     ls_array = ["solid", "dashed", "dashdot", "dotted"]
-    
-    # read the directory name first
-    m_array = []
-    Γm_array = []
-    for fn in fns:
-        m, Γ = fn.replace("m=", "").split("-Γ=")
-        m_array.insert(0, float(m))
-        Γm_array.insert(0, round(float(Γ)/float(m), 4))
-    m_array = list(set(m_array))
-    m_array.sort()
-    Γm_array = list(set(Γm_array))
-    Γm_array.sort()
-    # print(m_array, Γm_array)
+   
+    m_array, Γm_array = _get_m_Γ_list(fns)
 
     # get color from m_array
     cmap = colormaps['viridis']
@@ -159,30 +177,39 @@ def plot_all(dn):
         plot_back_single(full_dn)
         
         if Γm_array.index(round(Γ/m, 4)) == 0:
-            # when the ls is solid
+        # show the legend when the ls is solid
             label = rf"$m_\phi={_latex_float(m)}" + "m_{pl}$"
             # + rf", \Gamma={_latex_float(Γ/m)} m_\phi$"
         else:
             label = None
         # print(label)
-        # plot_spec_single(full_dn, ax, label)
+        plot_spec_single(full_dn)
         color = color_array[m_array.index(m)]
         ls = ls_array[Γm_array.index(round(Γ/m, 4))]
-        draw_spec(full_dn, ax, label, m, Γ, color, ls)
-    
-    # ax.set_xlabel("$k/a_e H_e$")
-    # ax.set_ylabel(r"$a_0^4 \rho_{h, k} / (a_eH_e)^4$")
-    ax.set_xlabel("$f/Hz$")
-    ax.set_ylabel(r"$\Omega_{gw, 0}h^2 $")
+        draw_spec(full_dn, ax, ax2, label, m, Γ, color, ls)
+  
+    ax.set_xlabel(r"$k/a_e H_e$")
+    ax.set_ylabel(r"$\rho_k / (a_e H_e)^4$")
     ax.set_xscale("log")
     ax.set_yscale("log")
-    ax.set_ylim(1e-33, 1e-24)
-    ax.legend(loc="upper right")
+    fig.tight_layout()
+    fig.savefig(dn.replace("data", "figs") + "spec_all.pdf", bbox_inches="tight")
+    plt.close(1)
 
-    plt.tight_layout()
-    plt.savefig(dn.replace("data", "figs") + "spec_all.pdf", bbox_inches="tight")
-    plt.close()
+    # ax.set_xlabel("$k/a_e H_e$")
+    # ax.set_ylabel(r"$a_0^4 \rho_{h, k} / (a_eH_e)^4$")
+    ax2.set_xlabel("$f/Hz$")
+    ax2.set_ylabel(r"$\Omega_{gw, 0}h^2 $")
+    ax2.set_xscale("log")
+    ax2.set_yscale("log")
+    ax2.set_ylim(1e-33, 1e-24)
+    ax2.legend(loc="upper right")
+
+    fig2.tight_layout()
+    fig2.savefig(dn.replace("data", "figs") + "GW_spec_all.pdf", bbox_inches="tight")
+    plt.close(2)
 
 
-# plot_single("../data/Chaotic2/m=1.0e-06-Γ=1.0e-07")
+# plot_back_single("../data/Chaotic2/test")
+# plot_spec_single("../data/Chaotic2/test")
 plot_all("../data/Chaotic2/")
