@@ -25,6 +25,7 @@ def plot_back_single(dn):
 
     t = data["tau"]
     a = data["a"]
+    H = data["H"]
     app_a = data["app_a"]
     phi = data["phi"]
     Omega_r = data["Omega_r"]
@@ -33,6 +34,8 @@ def plot_back_single(dn):
     
     a_e = data["a_e"]
     a_rh = data["a_rh"]
+    H_e = data["H_e"]
+    N_e = np.log(a_e)
 
     fig, (ax1, ax2) = plt.subplots(ncols=2)
 
@@ -61,6 +64,29 @@ def plot_back_single(dn):
     plt.savefig(fig_fn, bbox_inches="tight")
 
     plt.close()
+    
+    fig, ax = plt.subplots()
+    # ρ_ϕ^2 / H
+    rho2_H = (Omega_ϕ * 3 * H**2)**2 / H
+    rho2_H_ana = (3 * H_e**2 * (a_e / a)**3)**2 / (H_e*(a/a_e)**(-3/2))
+    ax.plot(N[N > N_e], rho2_H[N > N_e], color="k")
+    ax.plot(N[N > N_e], rho2_H_ana[N > N_e], color="k", ls="--")
+    # ax.plot(N[N > N_e], np.interp(N[N > N_e], ))
+    
+    ax.set_xlabel(r"$ln(a)$")
+    ax.set_ylabel(r"$\rho_\phi^2 / H$")
+    ax.set_yscale("log")
+    ax.set_ylim(1e-24, 1e-11)
+
+    plt.tight_layout()
+    out_dn = dn.replace("data", "figs")
+    Path(out_dn).mkdir(parents=True, exist_ok=True)
+    fig_fn = join(out_dn, "rho2_H.pdf")
+    # print(fig_fn)
+    plt.savefig(fig_fn, bbox_inches="tight")
+
+    plt.close()
+
 
 def plot_spec_single(dn):
     fn = join(dn, "spec.npz")
@@ -100,15 +126,28 @@ def draw_spec(dn, AX, AX2, label, m_phi, Γ, c, ls):
 
     k = data["k"]
     ρ = data["rho"]
+    n = data["n"]
+    # n_boltz = data["n_boltz"]
+    # print(k.shape, n_boltz.shape)
 
     fn_ode = join(dn, "eom.npz")
-    H_e = np.load(fn_ode)["H_e"]
-    a_e = np.load(fn_ode)["a_e"]
-    a_rh = np.load(fn_ode)["a_rh"]
-    # print(a_e/a_rh)
+    data_eom = np.load(fn_ode)
+    a = data_eom["a"]
+    H_e = data_eom["H_e"]
+    a_e = data_eom["a_e"]
+    a_rh = data_eom["a_rh"]
+    H = data_eom["H"]
+    ρ_ϕ = data_eom["Omega_phi"] * 3 * H**2
+
+    f_ana = formula.get_f_ana(k, H_e, m_phi, Γ)
+    f_exact_boltz = formula.get_f_exact_boltz(k, a, ρ_ϕ, H, m_phi, a_e, H_e)
+    # print(f_exact_boltz / f_ana)
     
-    AX.plot(k, ρ[0] * (k/k[0])**(-1/2), color="grey", ls="--")
-    AX.plot(k, ρ, ls=ls, color="k")
+    # AX.plot(k, ρ[0] * (k/k[0])**(-1/2), color="grey", ls="--")
+    AX.plot(k, f_ana, color="grey")
+    AX.plot(k, f_exact_boltz, color="grey", ls="dotted")
+    # AX.plot(k[n_boltz != 0], n_boltz[n_boltz !=0], color="grey", ls="dotted")
+    AX.plot(k, n*2, ls=ls, color="k")
 
     f = formula.get_f(k, a_e/a_rh, H_e, Γ)
     Ω = formula.get_Ω_gw0(ρ, a_e/a_rh, H_e, Γ)
@@ -189,9 +228,11 @@ def plot_all(dn):
         draw_spec(full_dn, ax, ax2, label, m, Γ, color, ls)
   
     ax.set_xlabel(r"$k/a_e H_e$")
-    ax.set_ylabel(r"$\rho_k / (a_e H_e)^4$")
+    ax.set_ylabel(r"$f=|\beta_k|^2$")
     ax.set_xscale("log")
     ax.set_yscale("log")
+    ax.set_xlim(1, 1e2)
+    ax.set_ylim(1e-10, 1e1)
     fig.tight_layout()
     fig.savefig(dn.replace("data", "figs") + "spec_all.pdf", bbox_inches="tight")
     plt.close(1)
@@ -209,7 +250,42 @@ def plot_all(dn):
     fig2.savefig(dn.replace("data", "figs") + "GW_spec_all.pdf", bbox_inches="tight")
     plt.close(2)
 
+def check_H(dn):
+    fn = join(dn, "eom.npz")
+    data = np.load(fn)
+    # print(data)
 
-# plot_back_single("../data/Chaotic2/test")
-# plot_spec_single("../data/Chaotic2/test")
-plot_all("../data/Chaotic2/")
+    t = data["tau"]
+    a = data["a"]
+    H = data["H"]
+    a_e = data["a_e"]
+    a_rh = data["a_rh"]
+    H_e = data["H_e"]
+
+    fig, ax = plt.subplots()
+
+    ax.plot(np.log(a), H_e * (a/a_e)**(-3/2), color="grey", ls="--")
+    ax.plot(np.log(a), H, color="k")
+    ax.plot(np.log([a_e, a_e]), [0, 1], color="tab:blue", alpha=0.5)
+    ax.plot(np.log([a_rh, a_rh]), [0, 1], color="tab:orange", alpha=0.5)
+
+    ax.set_xlabel("$N$")
+    ax.set_ylabel("$H$")
+    # ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.set_ylim(1e-8, 1e-3)
+    
+    fig.tight_layout()
+
+    out_dn = dn.replace("data", "figs")
+    Path(out_dn).mkdir(parents=True, exist_ok=True)
+    fig_fn = join(out_dn, "Hubble.pdf")
+    fig.savefig(fig_fn, bbox_inches="tight")
+    plt.close()
+
+if __name__ == "__main__":
+    # plot_back_single("../data/Chaotic2/test")
+    # plot_spec_single("../data/Chaotic2/test")
+    plot_all("../data/Chaotic2/")
+
+    # check_H("../data/Chaotic2/m=1.0e-04-Γ=1.0e-07/")

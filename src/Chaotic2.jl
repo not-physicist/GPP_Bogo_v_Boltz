@@ -23,12 +23,13 @@ end
 
 function save_eom(m::Float64, Γ::Float64, data_dir)
     # initial conditions
-    ϕᵢ = 4
+    ϕᵢ = 6.0
     # ignore ddϕ and Γ in EOM, take a=1
     # conformal Hubble
-    Hᵢ = sqrt(get_V(ϕᵢ, m)/3.)
+    # Hᵢ = sqrt(get_V(ϕᵢ, m)/3.)
     dVᵢ = get_dV(ϕᵢ, m)
-    dϕᵢ = - dVᵢ / (2*Hᵢ)
+    Vᵢ = get_V(ϕᵢ, m)
+    dϕᵢ = get_dϕ_SR(dVᵢ, Vᵢ, 1.0)
 
     u₀ = SA[ϕᵢ, dϕᵢ, 1.0, 0.0]
     tspan = (0.0, 1e7)
@@ -68,12 +69,12 @@ function save_all_spec()
             @info "Model parameter (in GeV): " m, Γ
 
             save_eom(m, Γ, data_dir)
-            PPs.save_all(num_k, data_dir)
+            PPs.save_all(num_k, data_dir, m)
         end
     end
 end
 
-# save_eom_test() = save_eom(1e-5, 1e-7)
-# save_f_test() = PPs.save_all(100, MODEL_DATA_DIR)
+save_eom_test() = save_eom(1e-5, 1e-7, MODEL_DATA_DIR * "test/")
+save_f_test() = PPs.save_all(100, MODEL_DATA_DIR * "test/")
 
 end

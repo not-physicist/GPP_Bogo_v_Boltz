@@ -104,6 +104,7 @@ function get_EOMData(sol::SciMLBase.ODESolution, _V::Function, Γ::Float64)
     app_a_p = diff(app_a[1:end-1]) ./ diff(τ[1:end-1])
     Ω_r = @. ρ_r/(3*H^2)
     Ω_ϕ = @. ρ_ϕ/(3*H^2)
+    # @show ρ_tot ./ (3 .* H .^ 2)
 
     # @show size(ϕ), size(dϕ)
     # @show size(app_a), size(app_a_p)

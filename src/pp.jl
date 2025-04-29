@@ -132,7 +132,7 @@ function solve_diff_mode(k::Real, eom)
     u₀ = @SVector [1/sqrt(2*ω₀), -1.0im*ω₀/sqrt(2*ω₀)] 
     
     prob = ODEProblem{false}(get_diff_eq_mode, u₀, tspan, get_ω2)
-    sol = solve(prob, Vern9(), reltol=1e-10, abstol=1e-10, save_everystep=false, isoutofdomain=get_wronskian_domain)
+    sol = solve(prob, Vern9(), reltol=1e-10, abstol=1e-10, save_everystep=false, isoutofdomain=get_wronskian_domain, maxiters=1e7)
     χₑ = sol[1, end]
     ∂χₑ = sol[2, end]
 
@@ -163,19 +163,46 @@ function solve_all_spec(k::Vector, eom)
     return n, ρ, err
 end
 
-function save_all(num_k, data_dir)
+#=
+"""
+phase space distribution from Boltzmann equation
+
+only non-zero if k/m in [1, a/a_e]; igore the upper limit
+"""
+function solve_boltz(k::Vector, eom, m)
+    ρ_c = @. 3 * eom.H^2
+    ρ_ϕ = @. eom.Ω_ϕ * ρ_c
+    
+    # ρ^2 / H
+    ρ2_H = @. ρ_ϕ^2 / eom.H 
+    get_ρ2_H = LinearInterpolations.Interpolate(eom.a, ρ2_H, extrapolate=LinearInterpolations.Constant(0.0))
+
+    # helper function for f; x
+    _get_f(x) = π / 16 / m^3 * get_ρ2_H(x)
+
+    f = [x > eom.aₑ*m ? _get_f(x/m) : 0.0 for x in k ]
+
+    return f
+end
+=#
+
+function save_all(num_k, data_dir, m)
     eom = deserialize(data_dir * "eom.dat")
 
-    k = @. logspace(log10(2), log10(500), num_k) * eom.aₑ * eom.Hₑ
+    # k = @. logspace(-2, 2, num_k) * eom.aₑ * eom.Hₑ
+    k = @. logspace(0, 2, num_k) * eom.aₑ * eom.Hₑ
+    # k = @. logspace(log10(2), log10(500), num_k) * eom.aₑ * eom.Hₑ
     # k = @. [1.5] * a_e * H_e
     
+    # n_boltz = solve_boltz(k, eom, m)
     n, ρ, err = @time solve_all_spec(k, eom)
-    # @show n, ρ, err
+    # @show n, n_boltz, ρ, err
     
     mkpath(data_dir)
     npzwrite(data_dir * "spec.npz", Dict(
         "k" => k ./ (eom.aₑ*eom.Hₑ),
         "n" => abs.(n),
+        # "n_boltz" => abs.(n_boltz),
         "rho" => abs.(ρ ./ (eom.aₑ*eom.Hₑ)^4),
         "error" => err
     ))

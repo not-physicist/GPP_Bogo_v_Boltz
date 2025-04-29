@@ -13,5 +13,7 @@ include("eom.jl")
 include("Chaotic2.jl")
 using .Chaotic2
 
+include("TModel/TModel.jl")
+using .TModel
 
 end
