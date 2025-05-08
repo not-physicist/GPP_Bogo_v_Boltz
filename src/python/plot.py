@@ -131,6 +131,7 @@ def draw_spec(dn, AX, AX2, label, m_phi, Γ, c, ls):
     # print(k.shape, n_boltz.shape)
 
     fn_ode = join(dn, "eom.npz")
+    # print(fn_ode)
     data_eom = np.load(fn_ode)
     a = data_eom["a"]
     H_e = data_eom["H_e"]
@@ -138,41 +139,34 @@ def draw_spec(dn, AX, AX2, label, m_phi, Γ, c, ls):
     a_rh = data_eom["a_rh"]
     H = data_eom["H"]
     ρ_ϕ = data_eom["Omega_phi"] * 3 * H**2
-
-    f_ana = formula.get_f_ana(k, H_e, m_phi, Γ)
+    # print(a_e)
+    
+    # f_ana = formula.get_f_ana(k, H_e, m_phi, Γ)
+    # AX.plot(k, f_ana, color="grey", label="ana. Boltz.")
     f_exact_boltz = formula.get_f_exact_boltz(k, a, ρ_ϕ, H, m_phi, a_e, H_e)
-    # print(f_exact_boltz / f_ana)
-    
-    # AX.plot(k, ρ[0] * (k/k[0])**(-1/2), color="grey", ls="--")
-    AX.plot(k, f_ana, color="grey")
-    AX.plot(k, f_exact_boltz, color="grey", ls="dotted")
-    # AX.plot(k[n_boltz != 0], n_boltz[n_boltz !=0], color="grey", ls="dotted")
-    AX.plot(k, n*2, ls=ls, color="k")
+    AX.plot(k, f_exact_boltz, color="grey", ls="dotted", label="exact Boltz.")
 
-    f = formula.get_f(k, a_e/a_rh, H_e, Γ)
-    Ω = formula.get_Ω_gw0(ρ, a_e/a_rh, H_e, Γ)
-    AX2.plot(f, Ω, label=label, color=c, ls=ls)
+    # AX.plot(k[n_boltz != 0], n_boltz[n_boltz !=0], color="grey", ls="dotted")
+    AX.plot(k, n, ls=ls, color="k", label="Bogo.")
     
-    '''
-    # analytical results
-    C = 1.5
-    C_k = 1.5
-    k_high = C_k * m_phi * a_rh / (a_e * H_e)
-    # print(k_high)
-    ρ_ana = C*3/(64*np.pi) * (m_phi / H_e)**(3/2) * k**(-1/2) * np.where(k < 0.1 * k_high, 1, np.exp(- 2 * (k/k_high)**2))
-    # ρ_ana2 = C*3/(64*np.pi) * (m_phi / H_e)**(3/2) * k**(-1/2) * np.exp(-2* (k/k_high)**2)
-    AX.plot(k, ρ_ana, color="gray", ls="--")
-    # AX.plot(k, ρ_ana2, color="gray", ls="--")
-    '''
+    if AX2 is not None:
+        f = formula.get_f(k, a_e/a_rh, H_e, Γ)
+        Ω = formula.get_Ω_gw0(ρ, a_e/a_rh, H_e, Γ)
+        AX2.plot(f, Ω, label=label, color=c, ls=ls)
 
     return None
 
 def _get_m_Γ_list(fns):
+    """
+    get list of numerical values of m and Γ
+    """
     # read the directory name first
     m = []
     Γm = []
     for fn in fns:
-        m_i, Γ_i = fn.replace("m=", "").split("-Γ=")
+        # m_i, Γ_i = fn.replace("m=", "").split("-Γ=")
+        m_i, Γ_i = fn.replace("r=", "").split("-Γ=")
+        print(m_i, Γ_i)
         m.insert(0, float(m_i))
         Γm.insert(0, round(float(Γ_i)/float(m_i), 4))
     m = list(set(m))
@@ -208,7 +202,8 @@ def plot_all(dn):
     
     for fn in fns:
         # print(fn)
-        m, Γ = fn.replace("m=", "").split("-Γ=")
+        # m, Γ = fn.replace("m=", "").split("-Γ=")
+        m, Γ = fn.replace("r=", "").split("-Γ=")
         m = float(m)
         Γ = float(Γ)
 
@@ -224,7 +219,8 @@ def plot_all(dn):
         # print(label)
         plot_spec_single(full_dn)
         color = color_array[m_array.index(m)]
-        ls = ls_array[Γm_array.index(round(Γ/m, 4))]
+        # ls = ls_array[Γm_array.index(round(Γ/m, 4))]
+        ls = None
         draw_spec(full_dn, ax, ax2, label, m, Γ, color, ls)
   
     ax.set_xlabel(r"$k/a_e H_e$")
@@ -233,6 +229,12 @@ def plot_all(dn):
     ax.set_yscale("log")
     ax.set_xlim(1, 1e2)
     ax.set_ylim(1e-10, 1e1)
+    
+    # only showing first three handles; avoid duplicates
+    handles, labels = ax.get_legend_handles_labels()
+    # print(handles, labels)
+    ax.legend(handles=handles[0:3], loc="upper right")
+
     fig.tight_layout()
     fig.savefig(dn.replace("data", "figs") + "spec_all.pdf", bbox_inches="tight")
     plt.close(1)
@@ -283,9 +285,54 @@ def check_H(dn):
     fig.savefig(fig_fn, bbox_inches="tight")
     plt.close()
 
+def plot_comp_chaotic_tmodel():
+    """
+    compare the spectra from chaotic and T model 
+    """
+    dn1 = "../data/Chaotic2/"
+    fns1 = [x for x in listdir(dn1) if x not in ["test"]]
+    dn2 = "../data/TModel/"
+    fns2 = [x for x in listdir(dn2) if x not in ["test"]]
+    # print(fns1, fns2)
+    
+    fig, ax = plt.subplots()
+    m = 1e-5 
+
+    for fn in fns1:
+        m, Γ = fn.replace("m=", "").split("-Γ=")
+        m = float(m)
+        Γ = float(Γ)
+        if m == 1e-5:
+            full_dn = join(dn1, fn)
+            draw_spec(full_dn, ax, None, "chaotic", m, Γ, "k", "dashed")
+
+    for fn in fns2:
+        # print(m)
+        full_dn = join(dn2, fn)
+        draw_spec(full_dn, ax, None, "T Model", m, 0.0, "k", None)
+
+    ax.set_xlabel(r"$k/a_e H_e$")
+    ax.set_ylabel(r"$f=|\beta_k|^2$")
+    # ax.set_ylabel(r"$f=|\beta_k|^2 (k/a_e H_e)$")
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.set_xlim(1, 1e2)
+    ax.set_ylim(1e-10, 1e1)
+    # ax.legend(loc="upper right")
+    
+    fig.tight_layout()
+    fig.savefig("../figs/spec_comp_chaotic_tmodel.pdf", bbox_inches="tight")
+    plt.close()
+        
+
 if __name__ == "__main__":
     # plot_back_single("../data/Chaotic2/test")
     # plot_spec_single("../data/Chaotic2/test")
-    plot_all("../data/Chaotic2/")
+    # plot_all("../data/Chaotic2/")
 
     # check_H("../data/Chaotic2/m=1.0e-04-Γ=1.0e-07/")
+
+    # plot_all("../data/TModel/")
+
+    # plot_comp_chaotic_tmodel()
+    check_H("../data/TModel/r=4.5e-03-Γ=1.0e-06/")

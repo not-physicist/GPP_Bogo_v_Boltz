@@ -186,7 +186,7 @@ function solve_boltz(k::Vector, eom, m)
 end
 =#
 
-function save_all(num_k, data_dir, m)
+function save_all(num_k, data_dir)
     eom = deserialize(data_dir * "eom.dat")
 
     # k = @. logspace(-2, 2, num_k) * eom.aₑ * eom.Hₑ

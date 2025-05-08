@@ -5,9 +5,9 @@ module ModelDatas
 
 using ...Commons
 
-export TModel, save_model_data, get_λ
+export TModels, save_model_data, get_λ
 
-struct TModel{T<:Real, N<:Int}
+struct TModels{T<:Real, N<:Int}
     n::N
     nₛ::T
     r::T
@@ -22,7 +22,7 @@ struct TModel{T<:Real, N<:Int}
     # parameter for ODE solver 
     ϕᵢ::T
 end
-TModel(n, nₛ, r, ϕᵢ) = TModel(n, nₛ, r, get_derived(n, nₛ, r)..., ϕᵢ)
+TModels(n, nₛ, r, ϕᵢ) = TModels(n, nₛ, r, get_derived(n, nₛ, r)..., ϕᵢ)
 
 """
 compute field value corresponding to the CMB pivot scale 
@@ -78,10 +78,11 @@ function get_derived(n::Int, nₛ::Real, r::Real)
     return V₀, α, ϕ_cmb, mᵩ
 end
 
-#=
 function get_αₗ(n::Int)
     return 2n / (2n + sqrt(4n^2 - 1)) / 3
 end
+
+#=
 """
 get field value at the end of slow-roll inflation;
 first implement r > r_l case (λ < λ_l, and ϵ=1 first)
@@ -122,7 +123,7 @@ end
 """
 save n, ns, r into plain text; just for reference, accuracy not that important
 """
-function save_model_data(model::TModel, fn::String)
+function save_model_data(model::TModels, fn::String)
     io = open(fn, "w")
     write(io, "n=$(model.n)\nn_s=$(model.nₛ)\nr=$(model.r)\nphi_i=$(model.ϕᵢ)")
     close(io)

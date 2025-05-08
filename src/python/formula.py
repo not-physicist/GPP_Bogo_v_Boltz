@@ -29,7 +29,7 @@ def get_f_ana(k, Hₑ, mᵩ, Γ):
     H_m = Hₑ / mᵩ
     # H_m = 1
     ex = np.exp(-4*Γ/(3*Hₑ) * ( (k*H_m)**(3/2) - 1) )
-    f = 9*np.pi / 16 * H_m**(-3/2) * k**(-9/2) * ex
+    f = 9*np.pi / 64 * H_m**(-3/2) * k**(-9/2) * ex
     return f
 
 
@@ -43,14 +43,18 @@ def get_f_exact_boltz(k, a, ρ_ϕ, H, m_ϕ, aₑ, Hₑ):
     # k_new = k * Hₑ / m_ϕ * aₑ
     # print(np.log(k_new)[0])
     # print(a/aₑ*m_ϕ/Hₑ)
-    print(m_ϕ/Hₑ)
+    # print(m_ϕ/Hₑ)
 
     # n^2 / H
     n2_H = (ρ_ϕ / m_ϕ)**2 / H
-    # n2_H = (3*Hₑ**2*(a/aₑ)**(-3)/m_ϕ)**2 / (Hₑ * (a/aₑ)**(-3/2))
+    # print(np.log(n2_H))
+    # print(np.log(a/aₑ*m_ϕ/Hₑ))
+    # print(np.log(k))
+    # print(np.log(aₑ))
+    # print(m_ϕ / Hₑ)
     
     # interpolate a/a_e == k / (a_e m_ϕ)
     n2_H_new = np.interp(k, a/aₑ*m_ϕ/Hₑ, n2_H)
-    f =  np.pi / 16 / m_ϕ * n2_H_new
+    f =  np.pi / 64 / m_ϕ * n2_H_new
 
     return f

@@ -69,7 +69,7 @@ function save_all_spec()
             @info "Model parameter (in GeV): " m, Γ
 
             save_eom(m, Γ, data_dir)
-            PPs.save_all(num_k, data_dir, m)
+            PPs.save_all(num_k, data_dir)
         end
     end
 end
