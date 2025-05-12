@@ -63,6 +63,10 @@ function solve_eom(u₀::SVector{4, Float64},
 
     prob = ODEProblem(_get_f, u₀, tspan, p)
     sol = solve(prob, Tsit5(), isoutofdomain=_H_neg, reltol=1e-12, abstol=1e-12, callback=cb)
+
+    if _Omega_ϕ(sol.u[end]) >= 1e-5
+        @warn "The EOM may not terminate properly. A longer simulation might be necessary!"
+    end
     
     return get_EOMData(sol, p[1], p[3])
 end
@@ -219,4 +223,41 @@ function save_all(u₀, tspan, p, data_dir)
     save_eom_npz(eom_data, data_dir)
     return nothing
 end
+
+"""
+methods with additional argument: m_eff 
+mainly for TModel
+"""
+function save_eom_npz(eom::EOMData, data_dir, m_eff)
+    npzwrite(data_dir * "eom.npz", Dict(
+    "tau" => eom.τ,
+    "phi" => eom.ϕ,
+    "phi_d" => eom.dϕ,
+    "a" => eom.a,
+    "app_a" => eom.app_a,
+    "app_a_p" => eom.app_a_p,
+    "H" => eom.H,
+
+    "Omega_r" => eom.Ω_r,
+    "Omega_phi" => eom.Ω_ϕ,
+
+    "a_e" => eom.aₑ,
+    "a_rh" => eom.a_rh,
+    "H_e" => eom.Hₑ,
+
+    "m_eff" => m_eff.(eom.ϕ)
+    ))
+end
+
+
+function save_all(u₀, tspan, p, data_dir, m_eff)
+    eom_data = @time solve_eom(u₀, tspan, p)
+
+    mkpath(data_dir)
+    # serialize for Bogoliubov computation
+    serialize(data_dir * "eom.dat", eom_data)
+    save_eom_npz(eom_data, data_dir, m_eff)
+    return nothing
+end
+
 end

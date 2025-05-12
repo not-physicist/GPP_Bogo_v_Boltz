@@ -17,7 +17,7 @@ using StaticArrays, NPZ, Logging, Printf
 # global constant
 const MODEL_NAME="TModel"
 # not complete dir!
-const MODEL_DATA_DIR="data/$MODEL_NAME/"
+const MODEL_DATA_DIR="data/$MODEL_NAME"
 
 function get_V(ϕ::Real, model)
     x = ϕ / (sqrt(6 * model.α))
@@ -30,18 +30,21 @@ function get_dV(ϕ::Real, model)
 end
 
 """
+(time dependent) inflaton effective mass
+"""
+function get_m_eff(ϕ::Real, model)
+    x = ϕ / (sqrt(6 * model.α))
+    ddV = model.V₀*model.n/(6*model.α) * tanh(x)^(model.n-2) * (1 - 4*tanh(x)^2 + 3*tanh(x)^2)
+    return sqrt(ddV)
+end
+
+"""
 get parameters for (Taylored) monomial potential 
 """
 function get_λ(model)
     return model.V₀ / ((6*model.α)^(model.n))
 end
 
-"""
-get inflaton mass at oscillation
-"""
-function get_m(model)
-    return sqrt(2*get_λ(model))
-end
 #=
 """
 dϕ = dϕ/dτ at slow roll trajectory in conformal time
@@ -81,9 +84,10 @@ function save_eom(ϕᵢ::Float64, r::Float64, Γ::Float64, n::Int64, data_dir::S
     # parameters
     _V(x) = get_V(x, model)
     _dV(x) = get_dV(x, model)
+    _m_eff(x) = get_m_eff(x, model)
     p = (_V, _dV, Γ)
     
-    EOMs.save_all(u₀, tspan, p, data_dir)
+    EOMs.save_all(u₀, tspan, p, data_dir, _m_eff)
 
     return nothing
 end
@@ -99,7 +103,10 @@ function save_all_spec()
 
     for r in r_array 
         for Γ in Γ_array
-            data_dir = @sprintf "%sr=%.1e-Γ=%.1e/" MODEL_DATA_DIR r Γ
+            n = 2
+
+            data_dir = @sprintf "%s-n=%i/r=%.1e-Γ=%.1e/" MODEL_DATA_DIR n r Γ
+            @info data_dir
             mkpath(data_dir)
             @info "Model parameter (in GeV): " r, Γ
 

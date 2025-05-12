@@ -39,22 +39,12 @@ def get_f_exact_boltz(k, a, ρ_ϕ, H, m_ϕ, aₑ, Hₑ):
     using exact Boltzmann and interpolation
     k is k/a_e H_e
     """
-    # convert to k / m_ϕ
-    # k_new = k * Hₑ / m_ϕ * aₑ
-    # print(np.log(k_new)[0])
-    # print(a/aₑ*m_ϕ/Hₑ)
-    # print(m_ϕ/Hₑ)
 
     # n^2 / H
-    n2_H = (ρ_ϕ / m_ϕ)**2 / H
-    # print(np.log(n2_H))
-    # print(np.log(a/aₑ*m_ϕ/Hₑ))
-    # print(np.log(k))
-    # print(np.log(aₑ))
-    # print(m_ϕ / Hₑ)
+    n2_H = ρ_ϕ**2 / m_ϕ**3 / H
     
     # interpolate a/a_e == k / (a_e m_ϕ)
     n2_H_new = np.interp(k, a/aₑ*m_ϕ/Hₑ, n2_H)
-    f =  np.pi / 64 / m_ϕ * n2_H_new
+    f =  np.pi / 64 * n2_H_new
 
     return f
