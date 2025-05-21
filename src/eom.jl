@@ -115,10 +115,16 @@ function get_EOMData(sol::SciMLBase.ODESolution, _V::Function, Γ::Float64)
     # @show size(H), size(ρ_r), size(ρ_ϕ)
 
     a_e, H_e = get_end(sol)
-    # reheating scale factor
+
     dec_index = findfirst(x -> x <= Γ, H)
-    a_rh = a[dec_index]
-    # @show log(a_rh)
+    # a_rh = a[dec_index]
+    a_rh = try
+        # reheating scale factor
+        a[dec_index]
+    catch e
+        @warn "Scalar factor at reheating not found!"
+        a[end]
+    end
 
     # now need to discard the last two elements
     # as app_a_p miss these

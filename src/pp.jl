@@ -187,10 +187,11 @@ end
 =#
 
 function save_all(num_k, data_dir)
+    @info data_dir
     eom = deserialize(data_dir * "eom.dat")
 
-    # k = @. logspace(-2, 2, num_k) * eom.aₑ * eom.Hₑ
-    k = @. logspace(0, 2, num_k) * eom.aₑ * eom.Hₑ
+    k = @. logspace(-2, 2, num_k) * eom.aₑ * eom.Hₑ
+    # k = @. logspace(0, 2, num_k) * eom.aₑ * eom.Hₑ
     # k = @. logspace(log10(2), log10(500), num_k) * eom.aₑ * eom.Hₑ
     # k = @. [1.5] * a_e * H_e
     

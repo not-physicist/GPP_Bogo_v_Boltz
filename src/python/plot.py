@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 from matplotlib import colormaps
 import numpy as np
+from scipy.ndimage import gaussian_filter1d
 
 from os import listdir 
 from os.path import join
@@ -17,11 +18,15 @@ def _latex_float(x):
     else:
         return float_str
 
+def get_eos(a, H):
+    """
+    get equation of state parameter from scalar factor and Hubble parameter
+    """
+    return np.diff(np.log((H/H[0])**2)) / np.diff(np.log(a)) / (-3) - 1
+
 def plot_back_single(dn):
-    # dn = "../data/Chaotic2/"
     fn = join(dn, "eom.npz")
     data = np.load(fn)
-    # print(data["m_eff"])
 
     t = data["tau"]
     a = data["a"]
@@ -31,8 +36,6 @@ def plot_back_single(dn):
     Omega_r = data["Omega_r"]
     Omega_ϕ = data["Omega_phi"]
     N = np.log(a)
-    m_eff = data["m_eff"]
-    # print(m_eff/m_eff[-1])
     
     a_e = data["a_e"]
     a_rh = data["a_rh"]
@@ -43,14 +46,13 @@ def plot_back_single(dn):
 
     # ax1.plot(t, a)
     ax1.plot(N, phi, c="k")
-    ax1.plot(N, m_eff/m_eff[-1], c="tab:blue", ls="--")
-    # ax1.plot(N, np.log(H/H[1000]), c="tab:blue", label=r"$H/H_i$")
-    # ax1.plot(N, R, c="k")
-    # ax1.set_xscale("log")
-    # ax1.set_yscale("log")
-    # ax1.set_xlim((5e4, 6e4))
-    # ax1.set_ylim((-1e-10,1e-10))
-    ax1.legend()
+    w = get_eos(a, H)
+    w_smooth = gaussian_filter1d(w, 100)
+    # print(w_smooth[::100])
+    ax1.plot(N[:-1], w, c="tab:blue", alpha=0.3)
+    ax1.plot(N[:-1], w_smooth, c="tab:blue", alpha=1.0)
+    # ax1.set_ylim(-1, 1)
+    # ax1.legend()
     ax1.set_xlabel("$ln(a)$")
     ax1.set_ylabel(r"$\phi/m_{pl}$")
 
@@ -58,7 +60,7 @@ def plot_back_single(dn):
     ax2.plot(N, Omega_ϕ, label=r"$\Omega_{\phi}$")
     ax2.set_xlabel("$ln(a)$")
     ax2.set_yscale("log")
-    # ax2.set_ylim(1e-10, 2)
+    ax2.set_ylim(1e-10, 2)
     ax2.legend()
 
     plt.tight_layout()
@@ -70,8 +72,10 @@ def plot_back_single(dn):
 
     plt.close()
     
+    ###############################
+    # rho^2 / H
+    ###############################
     fig, ax = plt.subplots()
-    # ρ_ϕ^2 / H
     rho2_H = (Omega_ϕ * 3 * H**2)**2 / H
     rho2_H_ana = (3 * H_e**2 * (a_e / a)**3)**2 / (H_e*(a/a_e)**(-3/2))
     ax.plot(N[N > N_e], rho2_H[N > N_e], color="k")
@@ -81,7 +85,7 @@ def plot_back_single(dn):
     ax.set_xlabel(r"$ln(a)$")
     ax.set_ylabel(r"$\rho_\phi^2 / H$")
     ax.set_yscale("log")
-    ax.set_ylim(1e-24, 1e-11)
+    # ax.set_ylim(1e-24, 1e-11)
 
     plt.tight_layout()
     out_dn = dn.replace("data", "figs")
@@ -89,8 +93,39 @@ def plot_back_single(dn):
     fig_fn = join(out_dn, "rho2_H.pdf")
     # print(fig_fn)
     plt.savefig(fig_fn, bbox_inches="tight")
-
     plt.close()
+    
+    ###############################
+    # m_eff
+    ###############################
+    try:
+        m_eff = data["m_eff"]
+        fig, ax = plt.subplots()
+        ax.plot(N, m_eff, c="k", label=r"$m_{\text{eff}}$")
+        ax.plot(N[0:-1], np.diff(m_eff)/np.diff(N), c="k", ls="--", label=r"$dm_{\text{eff}}/dN$")
+
+        ax.set_xlabel(r"$ln(a)$")
+        # ax.set_ylabel(r"$m_{\text{eff}}$")
+        ax.legend()
+
+        fig_fn = join(out_dn, "m_eff.pdf")
+        plt.savefig(fig_fn, bbox_inches="tight")
+        plt.close()
+    except KeyError:
+        print("m_eff not found. Skipping...")
+
+
+    ###############################
+    # a''/a
+    ###############################
+    fig, ax = plt.subplots()
+    ax.plot(N, app_a, c="k")
+    ax.set_xlabel(r"$ln(a)$")
+    ax.set_ylabel(r"$a''/a$")
+    fig_fn = join(out_dn, "app_a.pdf")
+    plt.savefig(fig_fn, bbox_inches="tight")
+    plt.close()
+
 
 
 def plot_spec_single(dn):
@@ -113,7 +148,7 @@ def plot_spec_single(dn):
     ax.set_xlabel("$k/a_e H_e$")
     ax.set_xscale("log")
     ax.set_yscale("log")
-    ax.set_ylim((1e-9, 1e3))
+    ax.set_ylim((1e-15, 1e1))
     ax.legend()
 
     fig.tight_layout()
@@ -123,7 +158,7 @@ def plot_spec_single(dn):
     fig.savefig(fig_fn, bbox_inches="tight")
     plt.close(fig=fig)
 
-def draw_spec(dn, AX, AX2, label, m_phi, Γ, c, ls):
+def draw_spec(dn, AX, AX2, label_pref, m_phi, Γ, c, ls):
     # print(dn, label)
     fn = join(dn, "spec.npz")
     data = np.load(fn)
@@ -146,21 +181,23 @@ def draw_spec(dn, AX, AX2, label, m_phi, Γ, c, ls):
     ρ_ϕ = data_eom["Omega_phi"] * 3 * H**2
     
     try:
+        # try to read out m_eff
         m_eff = data_eom["m_eff"]
         f_exact_boltz = formula.get_f_exact_boltz(k, a, ρ_ϕ, H, m_eff, a_e, H_e)
     except KeyError:
+        # if not found, then no m_eff, just use m_phi
         f_exact_boltz = formula.get_f_exact_boltz(k, a, ρ_ϕ, H, m_phi, a_e, H_e)
 
 
-    AX.plot(k, f_exact_boltz, color=c, ls="dotted", label="exact Boltz.")
+    AX.plot(k[f_exact_boltz > 0], f_exact_boltz[f_exact_boltz > 0], color=c, ls="dotted", label=label_pref + "exact Boltz.")
 
     # AX.plot(k[n_boltz != 0], n_boltz[n_boltz !=0], color="grey", ls="dotted")
-    AX.plot(k, n, ls=ls, color=c, label="Bogo.", alpha=0.5)
+    AX.plot(k, n, ls=ls, color=c, label=label_pref+"Bogo.", alpha=0.5)
     
     if AX2 is not None:
         f = formula.get_f(k, a_e/a_rh, H_e, Γ)
         Ω = formula.get_Ω_gw0(ρ, a_e/a_rh, H_e, Γ)
-        AX2.plot(f, Ω, label=label, color=c, ls=ls)
+        AX2.plot(f, Ω, label=label_pref, color=c, ls=ls)
 
     return None
 
@@ -223,7 +260,7 @@ def plot_all(dn):
             label = rf"$m_\phi={_latex_float(m)}" + "m_{pl}$"
             # + rf", \Gamma={_latex_float(Γ/m)} m_\phi$"
         else:
-            label = None
+            label = ""
         # print(label)
         plot_spec_single(full_dn)
         color = color_array[m_array.index(m)]
@@ -235,8 +272,8 @@ def plot_all(dn):
     ax.set_ylabel(r"$f=|\beta_k|^2$")
     ax.set_xscale("log")
     ax.set_yscale("log")
-    ax.set_xlim(1, 1e2)
-    ax.set_ylim(1e-10, 1e1)
+    # ax.set_xlim(1, 1e2)
+    # ax.set_ylim(1e-10, 1e1)
     
     # only showing first three handles; avoid duplicates
     handles, labels = ax.get_legend_handles_labels()
@@ -293,7 +330,7 @@ def check_H(dn):
     fig.savefig(fig_fn, bbox_inches="tight")
     plt.close()
 
-def draw_n2_H(dn, ax, m_phi, c):
+def draw_n2_H(dn, ax, m_phi, c, offset):
     fn = join(dn, "eom.npz")
     data = np.load(fn)
 
@@ -309,7 +346,7 @@ def draw_n2_H(dn, ax, m_phi, c):
         # no m_eff defined
         n2_H_m = (Omega_ϕ * 3 * H**2)**2 / H / m_phi**3
 
-    ax.plot(N[N > N_e] - N_e, n2_H_m[N > N_e], c)
+    ax.plot(N - N_e + offset, n2_H_m, c)
 
 
 def plot_comp_chaotic_tmodel():
@@ -320,7 +357,7 @@ def plot_comp_chaotic_tmodel():
     fns1 = [x for x in listdir(dn1) if x not in ["test"]]
     dn2 = "../data/TModel-n=2/"
     fns2 = [x for x in listdir(dn2) if x not in ["test"]]
-    print(fns1, fns2)
+    # print(fns1, fns2)
     
     fig, ax = plt.subplots()
     m = 1e-5 
@@ -333,14 +370,14 @@ def plot_comp_chaotic_tmodel():
         Γ = float(Γ)
         if m == 1e-5:
             full_dn = join(dn1, fn)
-            draw_spec(full_dn, ax, None, "chaotic", m, Γ, "k", None)
-            draw_n2_H(full_dn, ax2, m, "k")
+            draw_spec(full_dn, ax, None, "chaotic, ", m, Γ, "k", None)
+            draw_n2_H(full_dn, ax2, m, "k", 0)
 
     for fn in fns2:
         # print(m)
         full_dn = join(dn2, fn)
-        draw_spec(full_dn, ax, None, "T Model", m, 0.0, "tab:blue", None)
-        draw_n2_H(full_dn, ax2, m, "tab:blue")
+        draw_spec(full_dn, ax, None, "T model $n=2$, ", m, 0.0, "tab:blue", None)
+        draw_n2_H(full_dn, ax2, m, "tab:blue", 0.15)
 
     ax.set_xlabel(r"$k/a_e H_e$")
     ax.set_ylabel(r"$f=|\beta_k|^2$")
@@ -348,15 +385,20 @@ def plot_comp_chaotic_tmodel():
     ax.set_xscale("log")
     ax.set_yscale("log")
     ax.set_xlim(1, 1e2)
-    ax.set_ylim(1e-10, 1e1)
-    # ax.legend(loc="upper right")
+    ax.set_ylim(1e-10, 1e0)
+
+    handles, labels = ax.get_legend_handles_labels()
+    # print(handles, labels)
+    # labels_nodup = list(set(labels))
+    ax.legend(handles=[handles[0], handles[1], handles[6], handles[7]], loc="upper right")
     
     fig.tight_layout()
     fig.savefig("../figs/spec_comp_chaotic_tmodel.pdf", bbox_inches="tight")
     plt.close(fig=1)
-
+    
+    ax2.set_xlim(0, 5)
     ax2.set_xlabel(r"N - N_e")
-    ax2.set_ylabel(r"$\rho^2/H/m^3$")
+    ax2.set_ylabel(r"$\sim \rho^2/H/m^3$")
     ax2.set_yscale("log")
     fig2.tight_layout()
     fig2.savefig("../figs/n2_H_chaotic_tmodel.pdf", bbox_inches="tight")
@@ -364,7 +406,7 @@ def plot_comp_chaotic_tmodel():
         
 
 if __name__ == "__main__":
-    # plot_back_single("../data/Chaotic4/test")
+    # plot_back_single("../data/Chaotic2/test")
     # plot_spec_single("../data/Chaotic2/test")
     # plot_all("../data/Chaotic2/")
 
@@ -373,5 +415,9 @@ if __name__ == "__main__":
 
     # plot_all("../data/TModel-n=2/")
 
-    plot_comp_chaotic_tmodel()
+    # plot_comp_chaotic_tmodel()
     # check_H("../data/TModel-n=2/r=4.5e-03-Γ=1.0e-06/")
+
+    # plot_back_single("../data/Chaotic4/test")
+    # plot_spec_single("../data/Chaotic4/test")
+    plot_all("../data/Chaotic4/")

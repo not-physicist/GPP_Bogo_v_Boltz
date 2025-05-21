@@ -40,11 +40,26 @@ def get_f_exact_boltz(k, a, ρ_ϕ, H, m_ϕ, aₑ, Hₑ):
     k is k/a_e H_e
     """
 
-    # n^2 / H
-    n2_H = ρ_ϕ**2 / m_ϕ**3 / H
+    if np.isscalar(m_ϕ):
+        # if only rest mass is given
+        m_ϕ_end = m_ϕ
+        # n^2 / H
+        n2_H = ρ_ϕ**2 / m_ϕ**3 / H
+        n2_H_new = np.where(k*Hₑ/m_ϕ_end > 1, 
+                                          np.interp(k, a/aₑ*m_ϕ/Hₑ, n2_H),
+                                          0)
+    else:
+        # m_ϕ is an array of effective mass
+        m_ϕ_end = np.interp(aₑ, a, m_ϕ)
+        # print("m_ϕ_end: ", m_ϕ_end, "; H_e: ", Hₑ, "; N_e: ", np.log(aₑ))
+        n2_H = ρ_ϕ**2 / m_ϕ**2 / H
+        n2_H = n2_H[:-1] / (m_ϕ[:-1] + np.diff(m_ϕ) / np.diff(np.log(a)))
+        n2_H_new = np.where(k*Hₑ/m_ϕ_end > 1, 
+                                          np.interp(k, (a/aₑ*m_ϕ/Hₑ)[:-1], n2_H),
+                                          0)
+
     
     # interpolate a/a_e == k / (a_e m_ϕ)
-    n2_H_new = np.interp(k, a/aₑ*m_ϕ/Hₑ, n2_H)
     f =  np.pi / 64 * n2_H_new
 
     return f

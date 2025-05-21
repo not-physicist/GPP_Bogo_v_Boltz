@@ -34,13 +34,14 @@ function get_l(r)
 end
 
 function save_eom(l, Γ, data_dir)
-    ϕᵢ = 5.0 
+    ϕᵢ = 9.0
     dVᵢ = get_dV(ϕᵢ, l)
     Vᵢ = get_V(ϕᵢ, l)
     dϕᵢ = get_dϕ_SR(dVᵢ, Vᵢ, 1.0)
 
     u₀ = SA[ϕᵢ, dϕᵢ, 1.0, 0.0]
-    tspan = (0.0, 1e9)
+    # tspan = (0.0, 1e9)
+    tspan = (0.0, 1e10)
     _V(x) = get_V(x, l)
     _dV(x) = get_dV(x, l)
     p = (_V, _dV, Γ)
@@ -49,7 +50,28 @@ function save_eom(l, Γ, data_dir)
     return nothing
 end
 
-test_save_eom() = save_eom(get_l(0.001), 1e-12, MODEL_DATA_DIR * "test/")
+test_save_eom() = save_eom(get_l(0.001), 1e-8, MODEL_DATA_DIR * "test/")
+test_save_spec() = PPs.save_all(100, MODEL_DATA_DIR * "test/")
+
+function save_all_spec()
+    r_array = [0.0045] 
+    Γ_array = [1e-10, 1e-11, 1e-12]
+    num_k = 100 
+
+    for r in r_array 
+        for Γ in Γ_array
+            data_dir = @sprintf "%sr=%.1e-Γ=%.1e/" MODEL_DATA_DIR r Γ 
+            @info data_dir
+            mkpath(data_dir)
+
+            l = get_l(r)
+            @info "Model parameter (in GeV): " l, Γ
+
+            save_eom(l, Γ, data_dir)
+            PPs.save_all(num_k, data_dir)
+        end
+    end
+end
 
 end
 
