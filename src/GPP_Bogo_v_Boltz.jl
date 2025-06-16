@@ -9,6 +9,7 @@ module GPP_Bogo_v_Boltz
 include("common.jl")
 include("pp.jl")
 include("eom.jl")
+include("boltz.jl")
 
 include("TModel/TModel.jl")
 using .TModel

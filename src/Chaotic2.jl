@@ -62,7 +62,6 @@ function save_all_spec()
     for m in m_array
         for Γ_m in Γ_m_array
             Γ = Γ_m * m
-            # data_dir = MODEL_DATA_DIR * "m=$(@sprintf("%.2e", m))" * "-Γ=$(@sprintf("%.2e", Γ)/"
             data_dir = @sprintf "%sm=%.1e-Γ=%.1e/" MODEL_DATA_DIR m Γ
             mkpath(data_dir)
             # @info "data_dir = $(data_dir)" 
@@ -74,7 +73,7 @@ function save_all_spec()
     end
 end
 
-save_eom_test() = save_eom(1e-5, 1e-7, MODEL_DATA_DIR * "test/")
-save_f_test() = PPs.save_all(100, MODEL_DATA_DIR * "test/")
+save_eom_test() = save_eom(1e-5, 1e-8, MODEL_DATA_DIR * "test/")
+save_f_test() = PPs.save_all_every(MODEL_DATA_DIR * "test/")
 
 end

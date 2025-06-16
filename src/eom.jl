@@ -62,7 +62,8 @@ function solve_eom(u₀::SVector{4, Float64},
     cb = DiscreteCallback(condition, affect!)
 
     prob = ODEProblem(_get_f, u₀, tspan, p)
-    sol = solve(prob, Tsit5(), isoutofdomain=_H_neg, reltol=1e-12, abstol=1e-12, callback=cb)
+    # sol = solve(prob, AutoVern9(Rodas5P()), isoutofdomain=_H_neg, reltol=1e-12, abstol=1e-12, callback=cb)
+    sol = solve(prob, Vern9(), isoutofdomain=_H_neg, reltol=1e-12, abstol=1e-12, callback=cb)
 
     if _Omega_ϕ(sol.u[end]) >= 1e-5
         @warn "The EOM may not terminate properly. A longer simulation might be necessary!"
@@ -77,6 +78,21 @@ in conformal time (dϕ = dϕdτ)
 """
 function get_ρ_ϕ(ϕ, dϕ, a, V)
     return dϕ^2 / (2*a^2) + V(ϕ)
+end
+
+"""
+pressure of inflaton field
+in conformal time (dϕ = dϕdτ)
+"""
+function get_p_ϕ(ϕ, dϕ, a, V)
+    return dϕ^2 / (2*a^2) - V(ϕ)
+end
+
+"""
+equation of state
+"""
+function get_eos(ϕ, dϕ, a, V, ρ_r)
+    return (get_p_ϕ(ϕ, dϕ, a, V) + ρ_r/3)/(get_ρ_ϕ(ϕ, dϕ, a, V) + ρ_r)
 end
 
 """
@@ -125,13 +141,16 @@ function get_EOMData(sol::SciMLBase.ODESolution, _V::Function, Γ::Float64)
         @warn "Scalar factor at reheating not found!"
         a[end]
     end
+    
+    w = @. get_eos(ϕ, dϕ, a, _V, ρ_r)
+    V = @. _V(ϕ)
 
     # now need to discard the last two elements
     # as app_a_p miss these
     return EOMData(τ[1:end-2], ϕ[1:end-2], dϕ[1:end-2], 
             a[1:end-2], app_a[1:end-2], app_a_p,
             H[1:end-2], Ω_r[1:end-2], Ω_ϕ[1:end-2],
-            a_e, a_rh, H_e)
+            a_e, a_rh, H_e, w[1:end-2], V[1:end-2])
 end
 
 
@@ -153,6 +172,9 @@ struct EOMData{V<:Vector, F<:Real}
     aₑ::F
     a_rh::F  # scale factor at H = Γ
     Hₑ::F
+
+    w::V
+    V::V
 end
 
 #=
@@ -216,7 +238,10 @@ function save_eom_npz(eom::EOMData, data_dir)
 
     "a_e" => eom.aₑ,
     "a_rh" => eom.a_rh,
-    "H_e" => eom.Hₑ
+    "H_e" => eom.Hₑ,
+
+    "w" => eom.w,
+    "V" => eom.V
     ))
 end
 
@@ -250,6 +275,9 @@ function save_eom_npz(eom::EOMData, data_dir, m_eff)
     "a_e" => eom.aₑ,
     "a_rh" => eom.a_rh,
     "H_e" => eom.Hₑ,
+
+    "w" => eom.w,
+    "V" => eom.V,
 
     "m_eff" => m_eff.(eom.ϕ)
     ))

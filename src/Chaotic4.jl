@@ -55,8 +55,11 @@ test_save_spec() = PPs.save_all(100, MODEL_DATA_DIR * "test/")
 
 function save_all_spec()
     r_array = [0.0045] 
-    Γ_array = [1e-10, 1e-11, 1e-12]
-    num_k = 100 
+    Γ_array = [1e-9, 1e-11, 1e-13]
+
+    # r_array = [0.00045, 0.0045]
+    # Γ_array = [1e-10]
+    num_k = 200 
 
     for r in r_array 
         for Γ in Γ_array
@@ -68,10 +71,12 @@ function save_all_spec()
             @info "Model parameter (in GeV): " l, Γ
 
             save_eom(l, Γ, data_dir)
-            PPs.save_all(num_k, data_dir)
+            PPs.save_all(num_k, data_dir, -2, 2)
+            # PPs.save_all(num_k, data_dir, 0.2, 2)
+            # PPs.save_all_every(data_dir)
+            @printf "==============================I am a separator===================================\n"
         end
     end
 end
 
 end
-

@@ -1,35 +1,42 @@
-using GPP_SUGRA
-using Test, MultiQuad
+using GPP_Bogo_v_Boltz
+using Test
 
-#=
-@testset "SmallFields.jl" begin
-    @test SmallFields.save_ode()
-    @test SmallFields.test_save_f()
-
-    # clean up
-    rm("data/", recursive=true)
+function _test_single_pair(f, g; atol=1e-5)
+    """
+    test the fourier transform with gaussian
+    """
+    # f(x) = cos(x)
+    
+    # analytical/correct results
+    N = 1000
+    x = range(-10, 10, N)
+    y = @. f(x)
+    xf, yf = GPP_Bogo_v_Boltz.Boltzmann._get_four_trafo_physics(x, y)
+    
+    yf_ana = g.(xf)
+    
+    abs_diff = abs.(yf .- yf_ana)/N
+    sum_diff = sum(abs_diff[.!isnan.(abs_diff)])
+    if isapprox(sum_diff, 0; atol=atol)
+        return true 
+    else
+        # @show yf, yf_ana
+        @show sum_diff
+        # @show abs_diff
+        return false
+    end
 end
 
-@testset "TModes.jl" begin
-    dn = "data/TMode-test"
-    @test TModes.ModelDatas.test_ϕₑ()
-    @test TModes.save_ode()
-    @test TModes.test_save_f()
+@testset "boltz.jl" begin
+    # step function 
+    f(x) = x <= 1/2 && x >= -1/2 ? 1 : 0
+    g(x) = sin(x/2) / (x/2)
+    # seems step function's transform cannot be very accurate
+    @test _test_single_pair(f, g, atol=1e-2)
 
-    # clean up
-    rm("data/", recursive=true)
-end
-=# 
-
-@testset "common.jl" begin
-    func(y, x) = sin(x) * y^2
-    int, err = dblquad(func, 1, 2, x->0, x->x^2, rtol=1e-5)
-
-    X = collect(range(1, 5, 10000))
-    Y = collect(range(0, 30, 10000))
-    int2 = GPP_SUGRA.Commons.double_trap((i, j) -> func(Y[i], X[j]), 1, 2, x -> 0, x -> x^2, X, Y)
-
-    @test isapprox(int, int2, rtol=1e-2)
-    @test isapprox(dblquad(func, 1, 5, x->0, x->x^2, rtol=1e-5)[1], 
-                    GPP_SUGRA.Commons.double_trap((i, j) -> func(Y[i], X[j]), 1, 5, x -> 0, x -> x^2, X, Y), rtol=1e-2)
+    # Gaussian
+    σ = 1.5 
+    f2(x) = exp(-x^2/(2*σ^2))/sqrt(2*π*σ^2)
+    g2(k) = exp(-k^2*σ^2/2)
+    @test _test_single_pair(f2, g2)
 end

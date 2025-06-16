@@ -1,3 +1,4 @@
+from matplotlib.patches import bbox_artist
 import matplotlib.pyplot as plt
 from matplotlib import colormaps
 import numpy as np
@@ -46,11 +47,12 @@ def plot_back_single(dn):
 
     # ax1.plot(t, a)
     ax1.plot(N, phi, c="k")
-    w = get_eos(a, H)
+    # w = get_eos(a, H)
+    w = data["w"]
     w_smooth = gaussian_filter1d(w, 100)
     # print(w_smooth[::100])
-    ax1.plot(N[:-1], w, c="tab:blue", alpha=0.3)
-    ax1.plot(N[:-1], w_smooth, c="tab:blue", alpha=1.0)
+    ax1.plot(N, w, c="tab:blue", alpha=0.3)
+    ax1.plot(N, w_smooth, c="tab:blue", alpha=1.0)
     # ax1.set_ylim(-1, 1)
     # ax1.legend()
     ax1.set_xlabel("$ln(a)$")
@@ -116,16 +118,24 @@ def plot_back_single(dn):
 
 
     ###############################
-    # a''/a
+    # a''/a and H
     ###############################
-    fig, ax = plt.subplots()
+    fig, (ax, ax2) = plt.subplots(ncols=2)
     ax.plot(N, app_a, c="k")
+    ax.plot([N[0], N[-1]], [a_e*H_e, a_e*H_e], c="k")
     ax.set_xlabel(r"$ln(a)$")
     ax.set_ylabel(r"$a''/a$")
+    ax.set_yscale("log")
+
+    ax2.plot(N, H, c="k")
+    ax2.set_xlabel(r"$ln(a)$")
+    ax2.set_ylabel(r"$H$")
+    ax2.set_yscale("log")
+    
+    plt.tight_layout()
     fig_fn = join(out_dn, "app_a.pdf")
     plt.savefig(fig_fn, bbox_inches="tight")
     plt.close()
-
 
 
 def plot_spec_single(dn):
@@ -403,7 +413,34 @@ def plot_comp_chaotic_tmodel():
     fig2.tight_layout()
     fig2.savefig("../figs/n2_H_chaotic_tmodel.pdf", bbox_inches="tight")
     plt.close(fig=2)
-        
+
+"""
+plot β^2 evolution
+"""
+def plot_k_every(dn):
+    fns = [x for x in listdir(dn) if x not in ["eom.npz", "eom.dat", "spec.npz"]]
+    # print(fns)
+    
+    fig, ax = plt.subplots()
+    for fn in fns:
+        k = float(fn.replace("k=", "").replace(".npz", ""))
+        full_path = join(dn, fn)
+        # print(full_path, k)
+        data = np.load(full_path)
+
+        ax.plot(data["N"], data["n"], c="k")
+        ax.plot(data["N"], data["error"], c="gray")
+    
+    ax.set_xlabel("$N$")
+    ax.set_yscale("log")
+    fig.tight_layout()
+
+    out_dn = dn.replace("data", "figs")
+    Path(out_dn).mkdir(parents=True, exist_ok=True)
+    fig_fn = join(out_dn, "k_every.pdf")
+    plt.savefig(fig_fn, bbox_inches="tight")
+    plt.close()
+
 
 if __name__ == "__main__":
     # plot_back_single("../data/Chaotic2/test")
@@ -421,3 +458,8 @@ if __name__ == "__main__":
     # plot_back_single("../data/Chaotic4/test")
     # plot_spec_single("../data/Chaotic4/test")
     plot_all("../data/Chaotic4/")
+
+    # plot_k_every("../data/Chaotic4/r=4.5e-03-Γ=1.0e-10/")
+    # plot_k_every("../data/Chaotic4/r=1.0e-03-Γ=1.0e-10/")
+    # plot_k_every("../data/Chaotic4/r=4.5e-04-Γ=1.0e-10/")
+    # plot_k_every("../data/Chaotic2/test/")

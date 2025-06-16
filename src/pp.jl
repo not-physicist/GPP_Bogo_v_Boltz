@@ -7,11 +7,10 @@ using StaticArrays, OrdinaryDiffEq, NPZ, NumericalIntegration, ProgressBars, Lin
 
 using ..Commons
 
-#=
 """
 Defines the differential equation to solve
 """
-function get_diff_eq(u::SVector, p::Tuple, t::Real)
+function get_diff_eq_alpha(u, p, t)
     ω = p[1]
     dω = p[2]
     Ω = p[3]
@@ -38,7 +37,7 @@ end
 get the parameter for ODESolver ready;
 They are interpolator of ω, ω', Ω
 """
-function get_p(k::Real, t, app_a, app_a_p)
+function get_p_alpha(k::Real, t, app_a, app_a_p)
     # ω^2 = k^2 - a''/a
     ω = @. sqrt(Complex(k^2 - app_a))
     dω = @. - app_a_p / (2.0 * ω)
@@ -53,7 +52,7 @@ function get_p(k::Real, t, app_a, app_a_p)
     return get_ω, get_dω, get_Ω
 end
 
-function get_f(k::Vector, eom) 
+function solve_all_spec_alpha(k::Vector, eom) 
     if check_array(eom.app_a) | check_array(eom.app_a_p)
         throw(ArgumentError("Input arrays contain NaN or Inf!"))
     end
@@ -66,14 +65,15 @@ function get_f(k::Vector, eom)
     ω = zeros(ComplexF64, size(k)) 
 
     Threads.@threads for i in eachindex(k)
-        p = get_p(k[i], eom.τ, eom.app_a, eom.app_a_p)
+        p = get_p_alpha(k[i], eom.τ, eom.app_a, eom.app_a_p)
         
         tspan = [eom.τ[1], eom.τ[end]]
         u₀ = SA[1.0 + 0.0im, 0.0+0.0im]
 
-        prob = ODEProblem{false}(get_diff_eq, u₀, tspan, p)
+        prob = ODEProblem{false}(get_diff_eq_alpha, u₀, tspan, p)
         # sol = @time solve(prob, RK4())
-        sol = solve(prob, Tsit5(), reltol=1e-12, abstol=1e-12, save_everystep=false, maxiters=1e8, isoutofdomain=get_alpha_beta_domain)
+        sol = solve(prob, Vern9(), reltol=1e-12, abstol=1e-12, save_everystep=false, maxiters=1e8, isoutofdomain=get_alpha_beta_domain)
+        # sol = solve(prob, AutoVern9(Rodas5P(autodiff=false)), reltol=1e-12, abstol=1e-12, save_everystep=false, maxiters=1e8, isoutofdomain=get_alpha_beta_domain)
 
         α[i] = sol[1, end]
         β[i] = sol[2, end]
@@ -86,7 +86,9 @@ function get_f(k::Vector, eom)
     error = @. abs2(α) - abs2(β) - 1
     return n, ρ, error
 end
-=#
+
+#######################################################################################################################
+#######################################################################################################################
 
 function get_diff_eq_mode(u, ω2, t)
     # @show t, real(1.0+1.0im * get_wronskian(u[1], u[2]))
@@ -132,7 +134,7 @@ function solve_diff_mode(k::Real, eom)
     u₀ = @SVector [1/sqrt(2*ω₀), -1.0im*ω₀/sqrt(2*ω₀)] 
     
     prob = ODEProblem{false}(get_diff_eq_mode, u₀, tspan, get_ω2)
-    sol = solve(prob, Vern9(), reltol=1e-10, abstol=1e-10, save_everystep=false, isoutofdomain=get_wronskian_domain, maxiters=1e7)
+    sol = solve(prob, Vern9(), reltol=1e-12, abstol=1e-12, save_everystep=false, isoutofdomain=get_wronskian_domain, maxiters=1e7)
     χₑ = sol[1, end]
     ∂χₑ = sol[2, end]
 
@@ -186,18 +188,30 @@ function solve_boltz(k::Vector, eom, m)
 end
 =#
 
-function save_all(num_k, data_dir)
+function save_all(num_k, data_dir, log_k_i = 0, log_k_f = 2)
     @info data_dir
     eom = deserialize(data_dir * "eom.dat")
 
-    k = @. logspace(-2, 2, num_k) * eom.aₑ * eom.Hₑ
-    # k = @. logspace(0, 2, num_k) * eom.aₑ * eom.Hₑ
-    # k = @. logspace(log10(2), log10(500), num_k) * eom.aₑ * eom.Hₑ
+    k = @. logspace(log_k_i, log_k_f, num_k) * eom.aₑ * eom.Hₑ
+
     # k = @. [1.5] * a_e * H_e
-    
+    # @info "Comoving momentum k's range: " k[1], k[end]
+    # @info eom.aₑ eom.Hₑ 
+    # @info "Maximum of a''/a/(a_e H_e)^2" maximum(eom.app_a) / (eom.aₑ * eom.Hₑ)^2
+    # @info "a''/a/k in: " maximum(eom.app_a)/k[1], maximum(eom.app_a)/k[end]
+ 
+    # "critical" comoving momenta: largest k with tachyonic instab.
+    # in mpl unit
+    k_c = 2*sqrt(maximum(eom.app_a))
+    @info "k_c/a_e H_e = " k_c/(eom.aₑ * eom.Hₑ)
+   
     # n_boltz = solve_boltz(k, eom, m)
-    n, ρ, err = @time solve_all_spec(k, eom)
-    # @show n, n_boltz, ρ, err
+    n1, ρ1, err1 = @time solve_all_spec(k[k .<= k_c], eom)
+    n2, ρ2, err2 = @time solve_all_spec_alpha(k[k .> k_c], eom)
+    n = [n1; n2]
+    ρ = [ρ1; ρ2]
+    err = [err1; err2]
+    # @info size(n) size(ρ) size(err)
     
     mkpath(data_dir)
     npzwrite(data_dir * "spec.npz", Dict(
@@ -207,6 +221,61 @@ function save_all(num_k, data_dir)
         "rho" => abs.(ρ ./ (eom.aₑ*eom.Hₑ)^4),
         "error" => err
     ))
+end
+
+"""
+save at every step
+"""
+function solve_diff_mode_every(k::Real, eom)
+    tspan = [eom.τ[1], eom.τ[end]]
+
+    # ω^2 = k^2 - a''/a
+    get_app_a = LinearInterpolations.Interpolate(eom.τ, eom.app_a)
+    get_ω2 = x -> k^2 - get_app_a(x)
+    ω₀ = sqrt(get_ω2(tspan[1])+0.0im)
+    ωₑ = sqrt(get_ω2(tspan[2])+0.0im)
+
+    # u₀ = @SVector [1/sqrt(2*k), -1.0im*k/sqrt(2*k)] 
+    u₀ = @SVector [1/sqrt(2*ω₀), -1.0im*ω₀/sqrt(2*ω₀)] 
+    
+    prob = ODEProblem{false}(get_diff_eq_mode, u₀, tspan, get_ω2)
+    sol = solve(prob, Vern9(), reltol=1e-12, abstol=1e-12, save_everystep=true, isoutofdomain=get_wronskian_domain, maxiters=1e7)
+
+    χ = sol[1, :]
+    ∂χ = sol[2, :]
+
+    # wronskian
+    err = @. 1 + 1.0im * get_wronskian(χ, ∂χ)
+
+    n = @. _get_f(sqrt(get_ω2(sol.t) + 0.0im), χ, ∂χ)
+    # @info size(eom.τ) size(eom.a)
+    get_a = LinearInterpolations.Interpolate(eom.τ, eom.a)
+    # @info size(sol.t)
+    N = @. log(get_a(sol.t))
+    # @info size(N)
+    return N, n, err
+end
+
+"""
+saving the time evolution of |β|^2
+"""
+function save_all_every(data_dir)
+    @info data_dir 
+    mkpath(data_dir)
+    eom = deserialize(data_dir * "eom.dat")
+
+    num_k = 10 
+    k = @. logspace(-1, 1, num_k) * eom.aₑ * eom.Hₑ 
+    for ki in k
+        N, n, err = solve_diff_mode_every(ki, eom)
+        fn = @sprintf "%sk=%.1e.npz" data_dir ki/(eom.aₑ*eom.Hₑ)
+        # @info k fn 
+        npzwrite(fn, Dict(
+        "N" => N,
+        "n" => abs.(n),
+        "error" => err
+        ))
+    end
 end
 
 end
