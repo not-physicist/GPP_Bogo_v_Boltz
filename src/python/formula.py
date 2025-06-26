@@ -49,7 +49,7 @@ def get_f_exact_boltz(k, a, ρ_ϕ, H, m_ϕ, aₑ, Hₑ):
                                           np.interp(k, a/aₑ*m_ϕ/Hₑ, n2_H),
                                           0)
     else:
-        # m_ϕ is an array of effective mass
+        # m_ϕ is an array of effective masses
         m_ϕ_end = np.interp(aₑ, a, m_ϕ)
         # print("m_ϕ_end: ", m_ϕ_end, "; H_e: ", Hₑ, "; N_e: ", np.log(aₑ))
         n2_H = ρ_ϕ**2 / m_ϕ**2 / H

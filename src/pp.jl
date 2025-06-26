@@ -165,29 +165,6 @@ function solve_all_spec(k::Vector, eom)
     return n, ρ, err
 end
 
-#=
-"""
-phase space distribution from Boltzmann equation
-
-only non-zero if k/m in [1, a/a_e]; igore the upper limit
-"""
-function solve_boltz(k::Vector, eom, m)
-    ρ_c = @. 3 * eom.H^2
-    ρ_ϕ = @. eom.Ω_ϕ * ρ_c
-    
-    # ρ^2 / H
-    ρ2_H = @. ρ_ϕ^2 / eom.H 
-    get_ρ2_H = LinearInterpolations.Interpolate(eom.a, ρ2_H, extrapolate=LinearInterpolations.Constant(0.0))
-
-    # helper function for f; x
-    _get_f(x) = π / 16 / m^3 * get_ρ2_H(x)
-
-    f = [x > eom.aₑ*m ? _get_f(x/m) : 0.0 for x in k ]
-
-    return f
-end
-=#
-
 function save_all(num_k, data_dir, log_k_i = 0, log_k_f = 2)
     @info data_dir
     eom = deserialize(data_dir * "eom.dat")
@@ -205,22 +182,23 @@ function save_all(num_k, data_dir, log_k_i = 0, log_k_f = 2)
     k_c = 2*sqrt(maximum(eom.app_a))
     @info "k_c/a_e H_e = " k_c/(eom.aₑ * eom.Hₑ)
    
-    # n_boltz = solve_boltz(k, eom, m)
     n1, ρ1, err1 = @time solve_all_spec(k[k .<= k_c], eom)
     n2, ρ2, err2 = @time solve_all_spec_alpha(k[k .> k_c], eom)
     n = [n1; n2]
     ρ = [ρ1; ρ2]
     err = [err1; err2]
     # @info size(n) size(ρ) size(err)
+    # @info log.(n)
+    # @info size(f_boltz)
     
-    mkpath(data_dir)
-    npzwrite(data_dir * "spec.npz", Dict(
+    # mkpath(data_dir)
+    npzwrite(data_dir * "spec_bogo.npz", Dict(
         "k" => k ./ (eom.aₑ*eom.Hₑ),
         "n" => abs.(n),
-        # "n_boltz" => abs.(n_boltz),
         "rho" => abs.(ρ ./ (eom.aₑ*eom.Hₑ)^4),
         "error" => err
     ))
+    return nothing
 end
 
 """

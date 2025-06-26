@@ -7,6 +7,7 @@ module Chaotic2
 using ..Commons
 using ..EOMs
 using ..PPs
+using ..Boltzmann
 
 using StaticArrays, Logging, Printf, Serialization, NPZ, NumericalIntegration, LinearInterpolations
 
@@ -53,8 +54,8 @@ end
 =#
 
 function save_all_spec()
-    m_array = logspace(-4, -6, 3)
-    # m_array = [1e-5]
+    # m_array = logspace(-4, -6, 3)
+    m_array = [1e-5]
     Γ_m_array = logspace(-3, -1, 3)
     num_k = 100
     # @show m_array, Γ_array, logspace(-3, -1, 3)
@@ -68,12 +69,14 @@ function save_all_spec()
             @info "Model parameter (in GeV): " m, Γ
 
             save_eom(m, Γ, data_dir)
-            PPs.save_all(num_k, data_dir)
+            # PPs.save_all(num_k, data_dir)
+            Boltzmann.save_all(num_k, data_dir)
         end
     end
 end
 
-save_eom_test() = save_eom(1e-5, 1e-8, MODEL_DATA_DIR * "test/")
-save_f_test() = PPs.save_all_every(MODEL_DATA_DIR * "test/")
+# save_eom_test() = save_eom(1e-5, 1e-8, MODEL_DATA_DIR * "test/")
+# save_f_test() = PPs.save_all_every(MODEL_DATA_DIR * "test/")
+# save_f_test() = PPs.save_all(100, MODEL_DATA_DIR * "test/")
 
 end

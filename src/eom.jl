@@ -7,7 +7,7 @@ module EOMs
 
 using ..Commons
 
-using StaticArrays, OrdinaryDiffEq, Logging, NPZ, Serialization
+using StaticArrays, OrdinaryDiffEq, Logging, NPZ, Serialization, NumericalIntegration
 
 """
 Friedmann equation, EOM of inflaton field 
@@ -63,7 +63,7 @@ function solve_eom(u₀::SVector{4, Float64},
 
     prob = ODEProblem(_get_f, u₀, tspan, p)
     # sol = solve(prob, AutoVern9(Rodas5P()), isoutofdomain=_H_neg, reltol=1e-12, abstol=1e-12, callback=cb)
-    sol = solve(prob, Vern9(), isoutofdomain=_H_neg, reltol=1e-12, abstol=1e-12, callback=cb)
+    sol = solve(prob, Vern9(), isoutofdomain=_H_neg, reltol=1e-15, abstol=1e-15, callback=cb)
 
     if _Omega_ϕ(sol.u[end]) >= 1e-5
         @warn "The EOM may not terminate properly. A longer simulation might be necessary!"
@@ -142,6 +142,7 @@ function get_EOMData(sol::SciMLBase.ODESolution, _V::Function, Γ::Float64)
         a[end]
     end
     
+    t = cumul_integrate(τ, a)
     w = @. get_eos(ϕ, dϕ, a, _V, ρ_r)
     V = @. _V(ϕ)
 
@@ -150,7 +151,7 @@ function get_EOMData(sol::SciMLBase.ODESolution, _V::Function, Γ::Float64)
     return EOMData(τ[1:end-2], ϕ[1:end-2], dϕ[1:end-2], 
             a[1:end-2], app_a[1:end-2], app_a_p,
             H[1:end-2], Ω_r[1:end-2], Ω_ϕ[1:end-2],
-            a_e, a_rh, H_e, w[1:end-2], V[1:end-2])
+            a_e, a_rh, H_e, t[1:end-2], w[1:end-2], V[1:end-2])
 end
 
 
@@ -172,7 +173,8 @@ struct EOMData{V<:Vector, F<:Real}
     aₑ::F
     a_rh::F  # scale factor at H = Γ
     Hₑ::F
-
+    
+    t::V
     w::V
     V::V
 end
@@ -239,7 +241,8 @@ function save_eom_npz(eom::EOMData, data_dir)
     "a_e" => eom.aₑ,
     "a_rh" => eom.a_rh,
     "H_e" => eom.Hₑ,
-
+    
+    "t" => eom.t,
     "w" => eom.w,
     "V" => eom.V
     ))
@@ -275,7 +278,8 @@ function save_eom_npz(eom::EOMData, data_dir, m_eff)
     "a_e" => eom.aₑ,
     "a_rh" => eom.a_rh,
     "H_e" => eom.Hₑ,
-
+    
+    "t" => eom.t,
     "w" => eom.w,
     "V" => eom.V,
 

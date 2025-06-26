@@ -19,11 +19,13 @@ def _latex_float(x):
     else:
         return float_str
 
+'''
 def get_eos(a, H):
     """
     get equation of state parameter from scalar factor and Hubble parameter
     """
     return np.diff(np.log((H/H[0])**2)) / np.diff(np.log(a)) / (-3) - 1
+'''
 
 def plot_back_single(dn):
     fn = join(dn, "eom.npz")
@@ -139,7 +141,7 @@ def plot_back_single(dn):
 
 
 def plot_spec_single(dn):
-    fn = join(dn, "spec.npz")
+    fn = join(dn, "spec_bogo.npz")
     data = np.load(fn)
     # print(data)
 
@@ -170,7 +172,7 @@ def plot_spec_single(dn):
 
 def draw_spec(dn, AX, AX2, label_pref, m_phi, Γ, c, ls):
     # print(dn, label)
-    fn = join(dn, "spec.npz")
+    fn = join(dn, "spec_bogo.npz")
     data = np.load(fn)
     # print(data)
 
@@ -190,6 +192,7 @@ def draw_spec(dn, AX, AX2, label_pref, m_phi, Γ, c, ls):
     H = data_eom["H"]
     ρ_ϕ = data_eom["Omega_phi"] * 3 * H**2
     
+    '''
     try:
         # try to read out m_eff
         m_eff = data_eom["m_eff"]
@@ -200,9 +203,16 @@ def draw_spec(dn, AX, AX2, label_pref, m_phi, Γ, c, ls):
 
 
     AX.plot(k[f_exact_boltz > 0], f_exact_boltz[f_exact_boltz > 0], color=c, ls="dotted", label=label_pref + "exact Boltz.")
+    '''
 
     # AX.plot(k[n_boltz != 0], n_boltz[n_boltz !=0], color="grey", ls="dotted")
     AX.plot(k, n, ls=ls, color=c, label=label_pref+"Bogo.", alpha=0.5)
+   
+    fn = join(dn, "spec_boltz.npz")
+    data = np.load(fn)
+    k = data["k"]
+    f = data["f"]
+    AX.plot(k, f, color=c, ls="dotted", label=label_pref + "exact Boltz.")
     
     if AX2 is not None:
         f = formula.get_f(k, a_e/a_rh, H_e, Γ)
@@ -219,8 +229,8 @@ def _get_m_Γ_list(fns):
     m = []
     Γm = []
     for fn in fns:
-        # m_i, Γ_i = fn.replace("m=", "").split("-Γ=")
-        m_i, Γ_i = fn.replace("r=", "").split("-Γ=")
+        m_i, Γ_i = fn.replace("m=", "").split("-Γ=")
+        # m_i, Γ_i = fn.replace("r=", "").split("-Γ=")
         print(m_i, Γ_i)
         m.insert(0, float(m_i))
         Γm.insert(0, round(float(Γ_i)/float(m_i), 4))
@@ -258,7 +268,7 @@ def plot_all(dn):
     for fn in fns:
         # print(fn)
         # m, Γ = fn.replace("m=", "").split("-Γ=")
-        m, Γ = fn.replace("r=", "").split("-Γ=")
+        m, Γ = fn.replace("m=", "").split("-Γ=")
         m = float(m)
         Γ = float(Γ)
 
@@ -445,7 +455,7 @@ def plot_k_every(dn):
 if __name__ == "__main__":
     # plot_back_single("../data/Chaotic2/test")
     # plot_spec_single("../data/Chaotic2/test")
-    # plot_all("../data/Chaotic2/")
+    plot_all("../data/Chaotic2/")
 
     # check_H("../data/Chaotic2/m=1.0e-04-Γ=1.0e-07/")
     # check_H("../data/Chaotic2/m=1.0e-05-Γ=1.0e-06/")
@@ -457,7 +467,7 @@ if __name__ == "__main__":
 
     # plot_back_single("../data/Chaotic4/test")
     # plot_spec_single("../data/Chaotic4/test")
-    plot_all("../data/Chaotic4/")
+    # plot_all("../data/Chaotic4/")
 
     # plot_k_every("../data/Chaotic4/r=4.5e-03-Γ=1.0e-10/")
     # plot_k_every("../data/Chaotic4/r=1.0e-03-Γ=1.0e-10/")
