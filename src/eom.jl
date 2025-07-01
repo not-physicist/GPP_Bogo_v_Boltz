@@ -7,7 +7,55 @@ module EOMs
 
 using ..Commons
 
-using StaticArrays, OrdinaryDiffEq, Logging, NPZ, Serialization, NumericalIntegration
+using StaticArrays, OrdinaryDiffEq, Logging, NPZ, Serialization, NumericalIntegration, Peaks, LinearInterpolations
+
+# TODO: want to have dtmax parameter passed into the module
+
+"""
+energy density of inflaton field
+in conformal time (dϕ = dϕdτ)
+"""
+function get_ρ_ϕ(ϕ, dϕ, a, V, α)
+    return dϕ^2 / (2*a^(2*α)) + V(ϕ)
+end
+
+"""
+pressure of inflaton field
+in conformal time (dϕ = dϕdτ)
+"""
+function get_p_ϕ(ϕ, dϕ, a, V, α)
+    return dϕ^2 / (2*a^(2*α)) - V(ϕ)
+end
+
+"""
+equation of state
+"""
+function get_eos(ϕ, dϕ, a, V, ρ_r, α)
+    return (get_p_ϕ(ϕ, dϕ, a, V, α) + ρ_r/3)/(get_ρ_ϕ(ϕ, dϕ, a, V, α) + ρ_r)
+end
+
+"""
+conformal Hubble squared 
+w.r.t. the new time variable
+"""
+function get_H2_conf(ϕ, dϕ, a, ρ_r, V, α)
+    ρ_ϕ = get_ρ_ϕ(ϕ, dϕ, a, V, α)
+    return a^(2*α) * (ρ_r + ρ_ϕ) / 3.
+end
+
+"""
+a''/a (in new time variable)
+"""
+function get_app_a(ϕ, dϕ, a, ρ_r, V, α)
+    return a^(2*α)/3 * ((α-2)*dϕ^2/(2*a^(2*α)) + (α+1)*V(ϕ) + (α-1)*ρ_r)
+end
+
+"""
+Hubble slow roll
+"""
+function get_ϵ1(ϕ, dϕ, a, ρ_r, V, α)
+    return - get_app_a(ϕ, dϕ, a, ρ_r, V, α)/get_H2_conf(ϕ, dϕ, a, ρ_r, V, α) + α + 1
+end 
 
 """
 Friedmann equation, EOM of inflaton field 
@@ -24,15 +72,16 @@ function _get_f(u, p, t)
     get_V = p[1]
     get_dV = p[2]
     Γ = p[3]
+    α = p[4]
 
-    ρ_ϕ = get_ρ_ϕ(ϕ, dϕ, a, get_V)
+    ρ_ϕ = get_ρ_ϕ(ϕ, dϕ, a, get_V, α)
     # conformal Hubble
-    H = sqrt(abs(get_H2_conf(u..., get_V)))
+    H = sqrt(abs(get_H2_conf(u..., get_V, α)))
 
     return SA[dϕ, 
-              - (2*H + a*Γ)*dϕ - a^2 * get_dV(ϕ), 
+             -((3-α)*H + a^(α)*Γ)*dϕ - a^(2*α) * get_dV(ϕ), 
               a*H, 
-              -4*H*ρ_r + a*Γ*ρ_ϕ]
+              -4*H*ρ_r + a^(α)*Γ*ρ_ϕ]
 end
 
 """
@@ -40,7 +89,7 @@ function for isoutofdomain
 return true when H is sqrt of some negative number
 """
 function _H_neg(u, p, t)
-    H2 = get_H2_conf(u..., p[1])
+    H2 = get_H2_conf(u..., p[1], p[4])
     if H2 < 0.0 
         return true 
     else
@@ -49,88 +98,74 @@ function _H_neg(u, p, t)
 end
 
 """
+function for callback
+"""
+function _get_Omega_ϕ(u, p)
+    return get_ρ_ϕ(u[1], u[2], u[3], p[1], p[4]) / (u[4] + get_ρ_ϕ(u[1], u[2], u[3], p[1], p[4]))
+end
+
+"""
 Solve the EOMs given the parameters and initial conditions
 """
 function solve_eom(u₀::SVector{4, Float64},
-                   tspan::Tuple{Float64, Float64},
-                   p::Tuple{Function, Function, Float64})
-    # callback: terminate at ρ_ϕ / ρ_tot = 1e-10
-    _Omega_ϕ(u) = get_ρ_ϕ(u[1], u[2], u[3], p[1]) / (u[4] + get_ρ_ϕ(u[1], u[2], u[3], p[1])) 
-    condition(u, t, integrator) = ( _Omega_ϕ(u) <= 1e-5)
-    # condition(u, t, integrator) = ( u[3] >= 100)
+                   tspan::Tuple,
+                   p::Tuple)
+    # still inflation, no dissipation
+    condition(u, t, integrator) = (abs(get_ϵ1(u..., p[1], p[4])) >= 1)
     affect!(integrator) = terminate!(integrator)
     cb = DiscreteCallback(condition, affect!)
-
-    prob = ODEProblem(_get_f, u₀, tspan, p)
+    prob = ODEProblem(_get_f, u₀, tspan, (p[1], p[2], 0.0, p[4]))
     # sol = solve(prob, AutoVern9(Rodas5P()), isoutofdomain=_H_neg, reltol=1e-12, abstol=1e-12, callback=cb)
-    sol = solve(prob, Vern9(), isoutofdomain=_H_neg, reltol=1e-15, abstol=1e-15, callback=cb)
-
-    if _Omega_ϕ(sol.u[end]) >= 1e-5
-        @warn "The EOM may not terminate properly. A longer simulation might be necessary!"
-    end
+    sol = solve(prob, Vern9(), isoutofdomain=_H_neg, reltol=1e-12, abstol=1e-12, callback=cb, dtmax=1e4)
     
-    return get_EOMData(sol, p[1], p[3])
-end
+    # callback: terminate at ρ_ϕ / ρ_tot = 1e-5
+    _Omega_ϕ(u) = _get_Omega_ϕ(u, p)
+    condition2(u, t, integrator) = ( _Omega_ϕ(u) <= 1e-5)
+    affect!(integrator) = terminate!(integrator)
+    cb2 = DiscreteCallback(condition2, affect!)
+    u₁ = SA[sol[1, end], sol[2, end], sol[3, end], sol[4, end]]
+    tspan2 = (sol.t[end], tspan[2])
+    prob = ODEProblem(_get_f, u₁, tspan2, p)
+    sol2 = solve(prob, Vern9(), isoutofdomain=_H_neg, reltol=1e-12, abstol=1e-12, callback=cb2, dtmax=1e4, save_start=false)
+    # @show sol[3, 1]
+    
+    Ω_ϕ_end = _Omega_ϕ(sol2.u[end])
+    if Ω_ϕ_end >= 1e-5
+        @warn "The EOM may not terminate properly. A longer simulation might be necessary! Ω_ϕ = %f" Ω_ϕ_end
+    end
 
-"""
-energy density of inflaton field
-in conformal time (dϕ = dϕdτ)
-"""
-function get_ρ_ϕ(ϕ, dϕ, a, V)
-    return dϕ^2 / (2*a^2) + V(ϕ)
-end
-
-"""
-pressure of inflaton field
-in conformal time (dϕ = dϕdτ)
-"""
-function get_p_ϕ(ϕ, dϕ, a, V)
-    return dϕ^2 / (2*a^2) - V(ϕ)
-end
-
-"""
-equation of state
-"""
-function get_eos(ϕ, dϕ, a, V, ρ_r)
-    return (get_p_ϕ(ϕ, dϕ, a, V) + ρ_r/3)/(get_ρ_ϕ(ϕ, dϕ, a, V) + ρ_r)
-end
-
-"""
-conformal Hubble squared  
-"""
-function get_H2_conf(ϕ, dϕ, a, ρ_r, V)
-    ρ_ϕ = get_ρ_ϕ(ϕ, dϕ, a, V)
-    return a^2 * (ρ_r + ρ_ϕ) / 3.
+    η = vcat(sol.t[1:end-1], sol2.t)
+    ϕ = vcat(sol[1, 1:end-1], sol2[1, :])
+    dϕ = vcat(sol[2, 1:end-1], sol2[2, :])
+    a = vcat(sol[3, 1:end-1], sol2[3, :])
+    ρ_r = vcat(sol[4, 1:end-1], sol2[4, :])
+    a_e = sol[3, end-1]
+    
+    return get_EOMData(η, ϕ, dϕ, a, ρ_r, p[1], p[3], p[4], a_e)
 end
 
 """
 from ODEsolution get ODEData
 """
-function get_EOMData(sol::SciMLBase.ODESolution, _V::Function, Γ::Float64)
-    τ = sol.t 
-    ϕ = sol[1, :]
-    dϕ = sol[2, :]
-    a = sol[3, :]
-    ρ_r = sol[4, :]
-    # @show ϕ[end-10:end]
+function get_EOMData(η, ϕ, dϕ, a, ρ_r, V, Γ, α, a_e)
+    # max_ind = argmaxima(ϕ)
+    # @show η[max_ind]
     
-    ρ_ϕ = @. get_ρ_ϕ(ϕ, dϕ, a, _V)
+    ρ_ϕ = @. get_ρ_ϕ(ϕ, dϕ, a, V, α)
     ρ_tot = ρ_r + ρ_ϕ
     # normal Hubble
     H = @. sqrt(ρ_tot / 3.0)
     # a''/a according to second Friedmann
-    app_a = @. (4 * a^2 * _V(ϕ) - dϕ^2) / 6.0
+    app_a = @. (4 * a^2 * V(ϕ) - dϕ^2) / 6.0
     # (a''/a)'
-    app_a_p = diff(app_a[1:end-1]) ./ diff(τ[1:end-1])
+    app_a_p = diff(app_a[1:end-1]) ./ diff(η[1:end-1])
     Ω_r = @. ρ_r/(3*H^2)
     Ω_ϕ = @. ρ_ϕ/(3*H^2)
-    # @show ρ_tot ./ (3 .* H .^ 2)
 
-    # @show size(ϕ), size(dϕ)
-    # @show size(app_a), size(app_a_p)
-    # @show size(H), size(ρ_r), size(ρ_ϕ)
-
-    a_e, H_e = get_end(sol)
+    # a_e, H_e = get_end(sol)
+    # @info log(a_e) interpolate(a, ϕ, a_e) H_e
+    H_e = interpolate(a, H, a_e)
+    # @show a_e, H_e, log(a_e)
 
     dec_index = findfirst(x -> x <= Γ, H)
     # a_rh = a[dec_index]
@@ -138,17 +173,17 @@ function get_EOMData(sol::SciMLBase.ODESolution, _V::Function, Γ::Float64)
         # reheating scale factor
         a[dec_index]
     catch e
-        @warn "Scalar factor at reheating not found!"
+        @warn "Scalar factor at reheating not found! %f"
         a[end]
     end
     
-    t = cumul_integrate(τ, a)
-    w = @. get_eos(ϕ, dϕ, a, _V, ρ_r)
-    V = @. _V(ϕ)
+    t = cumul_integrate(η, a)
+    w = @. get_eos(ϕ, dϕ, a, V, ρ_r, α)
+    V = @. V(ϕ)
 
     # now need to discard the last two elements
     # as app_a_p miss these
-    return EOMData(τ[1:end-2], ϕ[1:end-2], dϕ[1:end-2], 
+    return EOMData(η[1:end-2], ϕ[1:end-2], dϕ[1:end-2], 
             a[1:end-2], app_a[1:end-2], app_a_p,
             H[1:end-2], Ω_r[1:end-2], Ω_ϕ[1:end-2],
             a_e, a_rh, H_e, t[1:end-2], w[1:end-2], V[1:end-2])
@@ -178,30 +213,6 @@ struct EOMData{V<:Vector, F<:Real}
     w::V
     V::V
 end
-
-#=
-"""
-read ODE solution stored in data/ode.npz
-"""
-function read_ode(data_dir::String)::ODEData
-    # maybe a try catch clause here; not sure if necessary
-    fn = data_dir * "ode.npz"
-    data = npzread(fn)
-    #  fn = data_dir * "ode.jld2"
-    #  data = load(fn)
-
-    τ = data["tau"]
-    ϕ = data["phi"]
-    dϕ = data["phi_d"]
-    a = data["a"]
-    app_a = data["app_a"]
-    H = data["H"]
-    err = data["err"]
-    aₑ = data["a_end"]
-    Hₑ = data["H_end"]
-    return ODEData(τ, ϕ, dϕ, a, app_a, H, err, aₑ, Hₑ)
-end
-=#
 
 function get_end(sol::SciMLBase.ODESolution)
     _a(t) = sol(t, Val{0}, idxs=3)
@@ -258,6 +269,7 @@ function save_all(u₀, tspan, p, data_dir)
     return nothing
 end
 
+#=
 """
 methods with additional argument: m_eff 
 mainly for TModel
@@ -297,5 +309,5 @@ function save_all(u₀, tspan, p, data_dir, m_eff)
     save_eom_npz(eom_data, data_dir, m_eff)
     return nothing
 end
-
+=#
 end
