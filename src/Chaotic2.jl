@@ -33,12 +33,14 @@ function save_eom(m::Float64, Γ::Float64, data_dir)
     dϕᵢ = get_dϕ_SR(dVᵢ, Vᵢ, 1.0)
 
     u₀ = SA[ϕᵢ, dϕᵢ, 1.0, 0.0]
-    tspan = (0.0, 1e7)
+    tspan = (0.0, 1e10)
     _V(x) = get_V(x, m)
     _dV(x) = get_dV(x, m)
-    p = (_V, _dV, Γ)
+    α = 0
+    p = (_V, _dV, Γ, α)
+    dtmax = 2*π/m / 100
 
-    EOMs.save_all(u₀, tspan, p, data_dir)
+    EOMs.save_all(u₀, tspan, p, data_dir, dtmax)
     # Main.infiltrate(@__MODULE__, Base.@locals, @__FILE__, @__LINE__)
     
     return nothing
@@ -68,7 +70,7 @@ function save_all_spec()
             # @info "data_dir = $(data_dir)" 
             @info "Model parameter (in GeV): " m, Γ
 
-            save_eom(m, Γ, data_dir)
+            # save_eom(m, Γ, data_dir)
             # PPs.save_all(num_k, data_dir)
             Boltzmann.save_all(num_k, data_dir)
         end

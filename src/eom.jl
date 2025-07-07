@@ -9,8 +9,6 @@ using ..Commons
 
 using StaticArrays, OrdinaryDiffEq, Logging, NPZ, Serialization, NumericalIntegration, Peaks, LinearInterpolations
 
-# TODO: want to have dtmax parameter passed into the module
-
 """
 energy density of inflaton field
 in conformal time (dϕ = dϕdτ)
@@ -56,6 +54,13 @@ Hubble slow roll
 function get_ϵ1(ϕ, dϕ, a, ρ_r, V, α)
     return - get_app_a(ϕ, dϕ, a, ρ_r, V, α)/get_H2_conf(ϕ, dϕ, a, ρ_r, V, α) + α + 1
 end 
+
+"""
+a''/a in conformal time. dϕ w.r.t. the new time variable
+"""
+function get_app_a_conf(ϕ, dϕ, a, ρ_r, V, α)
+    return a^2/6 * (4*V(ϕ) - dϕ^2/a^(2*α))
+end
 
 """
 Friedmann equation, EOM of inflaton field 
@@ -109,14 +114,15 @@ Solve the EOMs given the parameters and initial conditions
 """
 function solve_eom(u₀::SVector{4, Float64},
                    tspan::Tuple,
-                   p::Tuple)
+                   p::Tuple,
+                   dtmax::Float64)
     # still inflation, no dissipation
+    # callback: terminate when inflation ends
     condition(u, t, integrator) = (abs(get_ϵ1(u..., p[1], p[4])) >= 1)
     affect!(integrator) = terminate!(integrator)
     cb = DiscreteCallback(condition, affect!)
     prob = ODEProblem(_get_f, u₀, tspan, (p[1], p[2], 0.0, p[4]))
-    # sol = solve(prob, AutoVern9(Rodas5P()), isoutofdomain=_H_neg, reltol=1e-12, abstol=1e-12, callback=cb)
-    sol = solve(prob, Vern9(), isoutofdomain=_H_neg, reltol=1e-12, abstol=1e-12, callback=cb, dtmax=1e4)
+    sol = solve(prob, Vern9(), isoutofdomain=_H_neg, reltol=1e-12, abstol=1e-12, callback=cb, dtmax=dtmax)
     
     # callback: terminate at ρ_ϕ / ρ_tot = 1e-5
     _Omega_ϕ(u) = _get_Omega_ϕ(u, p)
@@ -126,7 +132,7 @@ function solve_eom(u₀::SVector{4, Float64},
     u₁ = SA[sol[1, end], sol[2, end], sol[3, end], sol[4, end]]
     tspan2 = (sol.t[end], tspan[2])
     prob = ODEProblem(_get_f, u₁, tspan2, p)
-    sol2 = solve(prob, Vern9(), isoutofdomain=_H_neg, reltol=1e-12, abstol=1e-12, callback=cb2, dtmax=1e4, save_start=false)
+    sol2 = solve(prob, Vern9(), isoutofdomain=_H_neg, reltol=1e-12, abstol=1e-12, callback=cb2, dtmax=dtmax, save_start=false)
     # @show sol[3, 1]
     
     Ω_ϕ_end = _Omega_ϕ(sol2.u[end])
@@ -149,21 +155,26 @@ from ODEsolution get ODEData
 """
 function get_EOMData(η, ϕ, dϕ, a, ρ_r, V, Γ, α, a_e)
     # max_ind = argmaxima(ϕ)
-    # @show η[max_ind]
+    # @info diff(log10.(diff(η[max_ind])))
     
+    # cosmic time
+    t = cumul_integrate(η, a.^α)
+    # conformal time
+    τ = cumul_integrate(η, a.^(α-1))
+   
     ρ_ϕ = @. get_ρ_ϕ(ϕ, dϕ, a, V, α)
     ρ_tot = ρ_r + ρ_ϕ
     # normal Hubble
     H = @. sqrt(ρ_tot / 3.0)
-    # a''/a according to second Friedmann
-    app_a = @. (4 * a^2 * V(ϕ) - dϕ^2) / 6.0
+    
+    # a''/a (wrt conformal time τ) according to second Friedmann
+    app_a = @. get_app_a_conf(ϕ, dϕ, a, ρ_r, V, α)
     # (a''/a)'
-    app_a_p = diff(app_a[1:end-1]) ./ diff(η[1:end-1])
+    app_a_p = diff(app_a[1:end-1]) ./ diff(τ[1:end-1])
+
     Ω_r = @. ρ_r/(3*H^2)
     Ω_ϕ = @. ρ_ϕ/(3*H^2)
 
-    # a_e, H_e = get_end(sol)
-    # @info log(a_e) interpolate(a, ϕ, a_e) H_e
     H_e = interpolate(a, H, a_e)
     # @show a_e, H_e, log(a_e)
 
@@ -177,16 +188,16 @@ function get_EOMData(η, ϕ, dϕ, a, ρ_r, V, Γ, α, a_e)
         a[end]
     end
     
-    t = cumul_integrate(η, a)
     w = @. get_eos(ϕ, dϕ, a, V, ρ_r, α)
     V = @. V(ϕ)
 
     # now need to discard the last two elements
-    # as app_a_p miss these
-    return EOMData(η[1:end-2], ϕ[1:end-2], dϕ[1:end-2], 
+    # as app_a_p has two less entries
+    return EOMData(η[1:end-2], τ[1:end-2], t[1:end-2],
+            ϕ[1:end-2], dϕ[1:end-2], 
             a[1:end-2], app_a[1:end-2], app_a_p,
             H[1:end-2], Ω_r[1:end-2], Ω_ϕ[1:end-2],
-            a_e, a_rh, H_e, t[1:end-2], w[1:end-2], V[1:end-2])
+            a_e, a_rh, H_e, w[1:end-2], V[1:end-2])
 end
 
 
@@ -195,9 +206,13 @@ struct to store the ODE data;
 note that they may have different length (due to the derivatives)
 """
 struct EOMData{V<:Vector, F<:Real}
+    η::V
     τ::V
+    t::V 
+
     ϕ::V
     dϕ::V
+
     a::V
     app_a::V
     app_a_p::V
@@ -209,11 +224,11 @@ struct EOMData{V<:Vector, F<:Real}
     a_rh::F  # scale factor at H = Γ
     Hₑ::F
     
-    t::V
     w::V
     V::V
 end
 
+#=
 function get_end(sol::SciMLBase.ODESolution)
     _a(t) = sol(t, Val{0}, idxs=3)
     _ap(t) = sol(t, Val{1}, idxs=3)
@@ -231,14 +246,17 @@ function get_end(sol::SciMLBase.ODESolution)
     # return _ϵ₁(sol.t)
     return a_end, H_end
 end
-
+=#
 """
 save the quantities in EOMData into npz file
 mainly for plotting
 """
 function save_eom_npz(eom::EOMData, data_dir)
     npzwrite(data_dir * "eom.npz", Dict(
+    "eta" => eom.η,
     "tau" => eom.τ,
+    "t" => eom.t,
+
     "phi" => eom.ϕ,
     "phi_d" => eom.dϕ,
     "a" => eom.a,
@@ -253,14 +271,13 @@ function save_eom_npz(eom::EOMData, data_dir)
     "a_rh" => eom.a_rh,
     "H_e" => eom.Hₑ,
     
-    "t" => eom.t,
     "w" => eom.w,
     "V" => eom.V
     ))
 end
 
-function save_all(u₀, tspan, p, data_dir)
-    eom_data = @time solve_eom(u₀, tspan, p)
+function save_all(u₀, tspan, p, data_dir, dtmax)
+    eom_data = @time solve_eom(u₀, tspan, p, dtmax)
 
     mkpath(data_dir)
     # serialize for Bogoliubov computation

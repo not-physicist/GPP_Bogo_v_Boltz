@@ -3,6 +3,7 @@ module to compute exact Boltzmann result
 """
 module Boltzmann
 
+using CubicSplines: extrapolate
 using ..Commons
 
 using CubicSplines, LinearInterpolations, NumericalIntegration, Peaks, Statistics, Serialization, NPZ
@@ -108,7 +109,7 @@ decompose the oscillations of inflaton into fourier series
 k in unit of aₑHₑ
 """
 function get_f(eom, k::Vector)
-    num_j = 20
+    num_j = 10
 
     #=
     Process the eom arrays first
@@ -117,25 +118,29 @@ function get_f(eom, k::Vector)
     =#
     # @show eom.t[1], (eom.t[eom.a .>= eom.aₑ])[1]*1e-5/π
     a_mask = eom.a .>= eom.aₑ
-    t_new, V_new = _get_dense(eom.t[a_mask], eom.V[a_mask])
+    # t_new, V_new = @time _get_dense(eom.t[a_mask], eom.V[a_mask])
+    t_new = eom.t[a_mask]
+    V_new = eom.V[a_mask]
     H_new = Interpolate(eom.t[a_mask], eom.H[a_mask]).(t_new)
     a_new = Interpolate(eom.t[a_mask], eom.a[a_mask]).(t_new)
     ρ_ϕ = @. eom.Ω_ϕ * 3 * eom.H^2
     ρ_new = Interpolate(eom.t[a_mask], ρ_ϕ[a_mask]).(t_new)
-    # potential BUG: 
-    # first maximum is not a_e (rightfully so)
-    # so that the smallest k we can compute is around 4
-    # should be 2!
-    # @show t_new[1], t_new[end]
     
     #=
     Find maxima of V(t)
     =#
-    indices, heights = findmaxima(V_new)
+    indices = @time argmaxima(V_new)
+    # add first "oscillation" gives lower momenta, but UV end will be messed up
+    # pushfirst!(indices, 1)
     periods = diff(t_new[indices])
-    @show mean(periods), std(periods)
+    # @show diff(log10.(periods))
+    # @show V_new[indices]
+    # @show diff(log.(periods)) ./ diff(log.(t_new[indices[1:end-1]]))
+    # @show mean(periods), std(periods)
     N = size(indices)[1] - 1
-   
+    # @info V_new[1], V_new[indices[1]]
+    # @info @. a_new[indices[1:end-1]] * (2π/periods) / (2 * eom.aₑ * eom.Hₑ)
+    
     #=
     Get Fourier series for each oscillation
     separate arrays for frequencies and four. coeffcients 
@@ -143,26 +148,22 @@ function get_f(eom, k::Vector)
     =#
     ωj = zeros(Float64, (N, num_j))
     c_n = zeros(ComplexF64, (N, num_j))
-    for i in 1:N 
+    Threads.@threads for i in 1:N 
         i1 = indices[i]
         i2 = indices[i+1]
         # @show P
     
         # get t and V for a single oscillation
         t_osci = t_new[i1:i2] .- t_new[i1]
-        # @show t_osci[end] - t_osci[1]
-        # V_osci = V_new[i1:i2] ./ V_new[i1]
         V_osci = (V_new ./ ρ_new)[i1:i2]
-        # @show V_osci[1], V_osci[end]
         P = t_osci[end] - t_osci[1]
         tmp = [_get_c_n(t_osci, V_osci, P, j) for j in 1:num_j]
-        # @show size(ωj[i, :]), size([x[1] for x in tmp])
         ωj[i, :] = [x[1] for x in tmp]
         c_n[i, :] = [x[2] for x in tmp]
     end
     # show (j=1) ω for different times
     # @show ωj[1:end, 1]
-    @show abs.(c_n[1, :]), abs.(c_n[end, :])
+    # @show abs.(c_n[1, :]), abs.(c_n[end, :])
     
     # @show size(ωj), size(t_new[indices])
 
@@ -171,30 +172,63 @@ function get_f(eom, k::Vector)
     First compute the f only at the maxima (given by indices)
     Then interpolate for dense output
     =#
-    # k = logspace(0, 2, 100)
-    # @show @. V_new[indices]^2 / H_new[indices]
-    f = zeros(size(k))
-    # iterate over j (different fourier modes)
-    for j in 1:num_j
-        # @info j
-        # ωj = [x[1] for x in results]
-        # @show ωj
-        n2_H = zeros(N)
-        for i in 1:N
-            n2_H[i] = 2*π/ωj[i, j]^3 * V_new[indices[i]]^2 * abs2(c_n[i, j]) / H_new[indices[i]]
-        end
-        # @show n2_H[1:100:end]
 
-        X = @. a_new[indices[1:end-1]] * ωj[:, j] / 2 / eom.aₑ / eom.Hₑ
-        # @info X[1], X[end], ωj[1, j] / 2 / eom.Hₑ, a_new[indices[1]] / eom.aₑ, eom.a[a_mask][1]/eom.aₑ
-        # @info ωj[1, j]
+
+    #=
+    # First method: godd for n=2, n=4 a bit strange
+    f = zeros(size(k))
+    for j in 1:num_j
+        # iterate over j (different fourier modes)
+        n2_H = zeros(N)
+        Threads.@threads for i in 1:N
+            n2_H[i] = 4*π/ωj[i, j]^3 * V_new[indices[i]]^2 * abs2(c_n[i, j]) / H_new[indices[i]]
+        end
+        
+        X = a_new[indices[1:end-1]] .* ωj[:, j] ./ 2 / eom.aₑ / eom.Hₑ
+        # indices for the sorted array
         Y = n2_H
-        # @info size(X), size(Y)
-        n2_H_dense = Interpolate(X, Y, extrapolate=LinearInterpolations.Constant(0.0)).(k)
-        # @show n2_H_dense[1:5:end]
-        f += n2_H_dense
+        # @info X[1:argmax(X)] X[argmax(X):end]
+        # @info X[1]
+        try
+            n2_H_dense = Interpolate(X, Y, extrapolate=LinearInterpolations.Constant(0.0)).(k)
+            f += n2_H_dense
+        catch e
+            n2_H_dense = Interpolate(X[1:argmax(X)], Y[1:argmax(X)], extrapolate=LinearInterpolations.Constant(0.0)).(k)
+            f += n2_H_dense
+            f += Interpolate(X[end:-1:argmax(X)], Y[end:-1:argmax(X)], extrapolate=LinearInterpolations.Constant(0.0)).(k)
+        end
     end
+    =# 
+    
+    # Second method: n=2 spectrum enhanced for whatever reason, n=4 alright
+    f = zeros(size(k))
+    for i in 1:N
+    # iterate over different oscillations
+        X = a_new[indices[i]] .* ωj[i, :] ./ 2 / eom.aₑ / eom.Hₑ
+        @show X
+        # ~ n^2 / H
+        Y = [4*π/ωj[i, j]^3 * V_new[indices[i]]^2 * abs2(c_n[i, j]) / H_new[indices[i]] for j in 1:num_j]
+        f += Interpolate(X, Y, extrapolate=LinearInterpolations.Constant(0.0)).(k)
+    end
+    # @show f
     return f
+    
+    #=
+    # Third method: n=2 spotty, but not so bad, bad for n=4
+    k_new = []
+    f = []
+    for i in 1:N
+    # iterate over different oscillations
+        X = a_new[indices[i]] .* ωj[i, :] ./ 2 / eom.aₑ / eom.Hₑ
+        # ~ n^2 / H
+        Y = [4*π/ωj[i, j]^3 * V_new[indices[i]]^2 * abs2(c_n[i, j]) / H_new[indices[i]] for j in 1:num_j]
+        k_new = [k_new; X]
+        f = [f; Y]
+    end
+    sort_ind = sortperm(k_new)
+    # @show k_new[sort_ind], f[sort_ind]
+    return Interpolate(k_new[sort_ind], f[sort_ind], extrapolate=LinearInterpolations.Constant(0.0)).(k)
+    =#
 end
 
 function save_all(num_k, data_dir, log_k_i=0, log_k_f=2)

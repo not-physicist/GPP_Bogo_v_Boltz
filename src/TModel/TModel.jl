@@ -10,6 +10,7 @@ using .ModelDatas
 using ..EOMs
 using ..Commons
 using ..PPs
+using ..Boltzmann
 
 using StaticArrays, NPZ, Logging, Printf
 # using JLD2
@@ -110,8 +111,9 @@ function save_all_spec()
             mkpath(data_dir)
             @info "Model parameter (in GeV): " r, Γ
 
-            save_eom(3.6, r, Γ, 2, data_dir)
-            PPs.save_all(num_k, data_dir)
+            # save_eom(3.6, r, Γ, 2, data_dir)
+            # PPs.save_all(num_k, data_dir)
+            # Boltzmann.save_all(num_k, data_dir)
         end 
     end 
     return nothing

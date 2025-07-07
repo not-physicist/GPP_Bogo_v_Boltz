@@ -51,7 +51,7 @@ def plot_back_single(dn):
     ax1.plot(N, phi, c="k")
     # w = get_eos(a, H)
     w = data["w"]
-    w_smooth = gaussian_filter1d(w, 100)
+    w_smooth = gaussian_filter1d(w, 10)
     # print(w_smooth[::100])
     ax1.plot(N, w, c="tab:blue", alpha=0.3)
     ax1.plot(N, w_smooth, c="tab:blue", alpha=1.0)
@@ -64,7 +64,7 @@ def plot_back_single(dn):
     ax2.plot(N, Omega_ϕ, label=r"$\Omega_{\phi}$")
     ax2.set_xlabel("$ln(a)$")
     ax2.set_yscale("log")
-    ax2.set_ylim(1e-10, 2)
+    ax2.set_ylim(1e-5, 2)
     ax2.legend()
 
     plt.tight_layout()
@@ -200,19 +200,22 @@ def draw_spec(dn, AX, AX2, label_pref, m_phi, Γ, c, ls):
     except KeyError:
         # if not found, then no m_eff, just use m_phi
         f_exact_boltz = formula.get_f_exact_boltz(k, a, ρ_ϕ, H, m_phi, a_e, H_e)
-
-
-    AX.plot(k[f_exact_boltz > 0], f_exact_boltz[f_exact_boltz > 0], color=c, ls="dotted", label=label_pref + "exact Boltz.")
     '''
 
-    # AX.plot(k[n_boltz != 0], n_boltz[n_boltz !=0], color="grey", ls="dotted")
-    AX.plot(k, n, ls=ls, color=c, label=label_pref+"Bogo.", alpha=0.5)
-   
+    # AX.plot(k, formula.get_f_ana(k, H_e, m_phi, Γ), color="tab:cyan", label="approx. Boltz.")
+    AX.plot(k, n, ls=ls, color="k", label=label_pref+"Bogo.", alpha=0.5)
+    
     fn = join(dn, "spec_boltz.npz")
+    # print(fn)
     data = np.load(fn)
     k = data["k"]
     f = data["f"]
-    AX.plot(k, f, color=c, ls="dotted", label=label_pref + "exact Boltz.")
+    # print(k, f)
+    AX.plot(k, f, color="k", ls="dotted", label=label_pref + "exact Boltz.")
+
+    # peaks = [0.8776563490417942, 1.7553126980835885, 2.6329690471253824, 3.510625396167177]
+    # for i in peaks:
+    #     AX.plot([i, i], [1e-20, 1e10], color="grey", alpha=0.2)
     
     if AX2 is not None:
         f = formula.get_f(k, a_e/a_rh, H_e, Γ)
@@ -229,8 +232,10 @@ def _get_m_Γ_list(fns):
     m = []
     Γm = []
     for fn in fns:
-        m_i, Γ_i = fn.replace("m=", "").split("-Γ=")
-        # m_i, Γ_i = fn.replace("r=", "").split("-Γ=")
+        if "m=" in fn:
+            m_i, Γ_i = fn.replace("m=", "").split("-Γ=")
+        elif "r=" in fn:
+            m_i, Γ_i = fn.replace("r=", "").split("-Γ=")
         print(m_i, Γ_i)
         m.insert(0, float(m_i))
         Γm.insert(0, round(float(Γ_i)/float(m_i), 4))
@@ -267,37 +272,41 @@ def plot_all(dn):
     
     for fn in fns:
         # print(fn)
-        # m, Γ = fn.replace("m=", "").split("-Γ=")
-        m, Γ = fn.replace("m=", "").split("-Γ=")
+        if "m=" in fn:
+            m, Γ = fn.replace("m=", "").split("-Γ=")
+        elif "r=" in fn:
+            m, Γ = fn.replace("r=", "").split("-Γ=")
         m = float(m)
         Γ = float(Γ)
 
         full_dn = join(dn, fn)
         plot_back_single(full_dn)
         
-        if Γm_array.index(round(Γ/m, 4)) == 0:
+        # if Γm_array.index(round(Γ/m, 4)) == 0:
         # show the legend when the ls is solid
-            label = rf"$m_\phi={_latex_float(m)}" + "m_{pl}$"
-            # + rf", \Gamma={_latex_float(Γ/m)} m_\phi$"
-        else:
-            label = ""
+            # label = rf"$m_\phi={_latex_float(m)}" + "m_{pl}$"
+            # label = rf"$\Gamma={_latex_float(Γ/m)} m_\phi$ "
+        # else:
+        #     label = ""
         # print(label)
+        # label = rf"$\Gamma={_latex_float(Γ/m)} m_\phi$, "
         plot_spec_single(full_dn)
         color = color_array[m_array.index(m)]
         # ls = ls_array[Γm_array.index(round(Γ/m, 4))]
         ls = None
-        draw_spec(full_dn, ax, ax2, label, m, Γ, color, ls)
+        draw_spec(full_dn, ax, ax2, "", m, Γ, color, ls)
   
     ax.set_xlabel(r"$k/a_e H_e$")
     ax.set_ylabel(r"$f=|\beta_k|^2$")
     ax.set_xscale("log")
     ax.set_yscale("log")
-    # ax.set_xlim(1, 1e2)
-    # ax.set_ylim(1e-10, 1e1)
+    ax.set_xlim(1, 1e2)
+    ax.set_ylim(1e-10, 1e1)
     
     # only showing first three handles; avoid duplicates
     handles, labels = ax.get_legend_handles_labels()
     # print(handles, labels)
+    # avoid duplicate legends
     ax.legend(handles=handles[0:3], loc="upper right")
 
     fig.tight_layout()
@@ -455,7 +464,7 @@ def plot_k_every(dn):
 if __name__ == "__main__":
     # plot_back_single("../data/Chaotic2/test")
     # plot_spec_single("../data/Chaotic2/test")
-    plot_all("../data/Chaotic2/")
+    # plot_all("../data/Chaotic2/")
 
     # check_H("../data/Chaotic2/m=1.0e-04-Γ=1.0e-07/")
     # check_H("../data/Chaotic2/m=1.0e-05-Γ=1.0e-06/")
@@ -465,9 +474,12 @@ if __name__ == "__main__":
     # plot_comp_chaotic_tmodel()
     # check_H("../data/TModel-n=2/r=4.5e-03-Γ=1.0e-06/")
 
+    # plot_back_single("../data/Chaotic4/r=4.5e-03-Γ=1.0e-10")
+    # plot_back_single("../data/Chaotic4/r=4.5e-03-Γ=1.0e-11")
+    # plot_back_single("../data/Chaotic4/r=4.5e-03-Γ=1.0e-12")
     # plot_back_single("../data/Chaotic4/test")
     # plot_spec_single("../data/Chaotic4/test")
-    # plot_all("../data/Chaotic4/")
+    plot_all("../data/Chaotic4/")
 
     # plot_k_every("../data/Chaotic4/r=4.5e-03-Γ=1.0e-10/")
     # plot_k_every("../data/Chaotic4/r=1.0e-03-Γ=1.0e-10/")

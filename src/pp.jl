@@ -3,7 +3,7 @@ module PPs
 using StaticArrays, OrdinaryDiffEq, NPZ, NumericalIntegration, ProgressBars, LinearInterpolations, Printf, Serialization
 #  using JLD2
 #  using Infiltritor
- using Interpolations
+using Interpolations
 
 using ..Commons
 
@@ -184,8 +184,8 @@ function save_all(num_k, data_dir, log_k_i = 0, log_k_f = 2)
    
     n1, ρ1, err1 = @time solve_all_spec(k[k .<= k_c], eom)
     n2, ρ2, err2 = @time solve_all_spec_alpha(k[k .> k_c], eom)
-    n = [n1; n2]
-    ρ = [ρ1; ρ2]
+    n = 2 .* [n1; n2]
+    ρ = 2 .* [ρ1; ρ2]
     err = [err1; err2]
     # @info size(n) size(ρ) size(err)
     # @info log.(n)
@@ -225,7 +225,7 @@ function solve_diff_mode_every(k::Real, eom)
     # wronskian
     err = @. 1 + 1.0im * get_wronskian(χ, ∂χ)
 
-    n = @. _get_f(sqrt(get_ω2(sol.t) + 0.0im), χ, ∂χ)
+    n = @. 2 * _get_f(sqrt(get_ω2(sol.t) + 0.0im), χ, ∂χ)
     # @info size(eom.τ) size(eom.a)
     get_a = LinearInterpolations.Interpolate(eom.τ, eom.a)
     # @info size(sol.t)

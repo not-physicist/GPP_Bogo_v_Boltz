@@ -8,6 +8,7 @@ using ..Commons
 using ..EOMs
 using ..PPs 
 using ..TModel 
+using ..Boltzmann
 
 using StaticArrays, Logging, Printf, Serialization, NPZ, NumericalIntegration, LinearInterpolations
 
@@ -44,18 +45,26 @@ function save_eom(l, Γ, data_dir)
     tspan = (0.0, 1e10)
     _V(x) = get_V(x, l)
     _dV(x) = get_dV(x, l)
-    p = (_V, _dV, Γ)
 
-    EOMs.save_all(u₀, tspan, p, data_dir)
+    α = 1.0
+    p = (_V, _dV, Γ, α)
+
+    # order of magnitude estimate for oscillation frequency
+    ωStar = 10 * sqrt(l) * 2 * sqrt(3) 
+    dtmax = 1/ωStar / 1000
+    @show ωStar dtmax
+
+    EOMs.save_all(u₀, tspan, p, data_dir, dtmax)
     return nothing
 end
 
-test_save_eom() = save_eom(get_l(0.001), 1e-8, MODEL_DATA_DIR * "test/")
-test_save_spec() = PPs.save_all(100, MODEL_DATA_DIR * "test/")
+test_eom() = save_eom(get_l(0.001), 1e-8, MODEL_DATA_DIR * "test/")
+test_spec() = PPs.save_all(100, MODEL_DATA_DIR * "test/")
 
 function save_all_spec()
     r_array = [0.0045] 
-    Γ_array = [1e-9, 1e-11, 1e-13]
+    Γ_array = [1e-10, 1e-11, 1e-12]
+    # Γ_array = [1e-10, 1e-11]
 
     # r_array = [0.00045, 0.0045]
     # Γ_array = [1e-10]
@@ -71,9 +80,9 @@ function save_all_spec()
             @info "Model parameter (in GeV): " l, Γ
 
             save_eom(l, Γ, data_dir)
-            PPs.save_all(num_k, data_dir, -2, 2)
-            # PPs.save_all(num_k, data_dir, 0.2, 2)
-            # PPs.save_all_every(data_dir)
+            # PPs.save_all(num_k, data_dir, -2, 2)
+            Boltzmann.save_all(num_k, data_dir, 0, 2)
+
             @printf "==============================I am a separator===================================\n"
         end
     end
