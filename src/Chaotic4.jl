@@ -79,7 +79,7 @@ function save_all_spec()
             l = get_l(r)
             @info "Model parameter (in GeV): " l, Γ
 
-            save_eom(l, Γ, data_dir)
+            # save_eom(l, Γ, data_dir)
             # PPs.save_all(num_k, data_dir, -2, 2)
             Boltzmann.save_all(num_k, data_dir, 0, 2)
 

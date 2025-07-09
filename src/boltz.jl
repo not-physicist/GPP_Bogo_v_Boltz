@@ -6,78 +6,7 @@ module Boltzmann
 using CubicSplines: extrapolate
 using ..Commons
 
-using CubicSplines, LinearInterpolations, NumericalIntegration, Peaks, Statistics, Serialization, NPZ
-
-#=
-DEPRECATED: fourier transform doesn't work
-
-"""
-(Physicists') Fourier transform of discrete data points (x, y)
-Re-sample the input using interpolation
-Assume real input
-"""
-function _get_four_trafo_physics(x, y)
-    Δx = minimum(diff(x))
-    x_new = range(x[1], x[end], step=Δx)
-    intp = CubicSpline(x, y)
-    y_new = intp[x_new]
-
-    yf = rfft(y_new)
-    xf = rfftfreq(length(y_new)) * (2*π) / Δx
-    yf_new = @. yf * Δx * exp(-1.0im*xf*x[1])
-
-    return xf, yf_new
-end
-
-"""
-auxiliary function to calculate the integral in the f
-    using fourier transform
-
-a array should start from a_e
-"""
-function _f_integ(k::Number, a::Vector, H::Vector, V_tilde_intp)
-    # @info a[1], a[end]
-    # @info k, (2*k/a[1]), (2*k/a[end])
-    # @info "2k/a: " (2* k ./ a)[:100]
-    V = [V_tilde_intp(x) for x in 2*k ./ a]
-    # @info size(V)
-    # @info V[1], V[end]
-    y = @. a / H * abs(V)
-    integral = integrate(a, y)
-    # @info size(integral)
-    return integral
-end
-
-"""
-compute phase space distribution of graviton 
-exact Boltzmann method.
-"""
-function get_f(eom)
-    # prepare the time, start at 0
-    a_mask = eom.a .>= eom.aₑ
-    t = eom.t[a_mask] .- (eom.t[a_mask])[1]
-    V = eom.V[a_mask]
-    # get Fourier transformed functio and the angular frequency
-    ω, V_tilde = @time _get_four_trafo_physics(t, V)
-    @info eom.aₑ, eom.Hₑ, eom.aₑ * eom.Hₑ 
-    # i_max = findmax(real(V_tilde))[2]
-    # @info ω[i_max]
-    # @info log.(V_tilde[1:100])
-    
-    V_tilde_intp = Interpolate(ω, V_tilde, extrapolate = LinearInterpolations.Constant(0.0))
-    # potential energy at end of inf
-    V0 = interpolate(eom.a, eom.V, eom.aₑ)
-    
-    k = logspace(0, 2, 50) * eom.aₑ * eom.Hₑ
-    # @info k
-    f_int = [_f_integ(k_i, eom.a[a_mask], eom.H[a_mask], V_tilde_intp) for k_i in k]
-    f = @. π / (2*k^2) * V0 * f_int
-    # @show f_int
-    # @info size(f_int)
-    @info log.(f)
-    return f
-end
-=#
+using CubicSplines, LinearInterpolations, NumericalIntegration, Peaks, Statistics, Serialization, NPZ, QuadGK
 
 """
 interpolate "signal" using cubic spline
@@ -96,9 +25,16 @@ assume the input is exactly one period
 """
 function _get_c_n(x, y, P, n::Int)
     ω = 2*π*n/P
-    integrand = @. y*exp(-1.0im*ω*x)
+    # x_new = range(x[1], x[end], step=minimum(diff(x))/(20*n))
+    # y_new = Interpolate(x, y).(x_new)
+
+    # integrand = @. y_new*exp(-1.0im*ω*x_new)
     # @show integrand
-    cₙ = 1/P * integrate(x, integrand)
+    # cₙ = 1/P * integrate(x_new, integrand)
+    
+    y_itp = Interpolate(x, y)
+    res = quadgk(k -> y_itp(k)*exp(-1.0im*ω*k), x[1], x[end])[1]
+    cₙ = 1/P * res[1]
     return ω, cₙ
 end
 
@@ -109,7 +45,7 @@ decompose the oscillations of inflaton into fourier series
 k in unit of aₑHₑ
 """
 function get_f(eom, k::Vector)
-    num_j = 10
+    num_j = 100
 
     #=
     Process the eom arrays first
@@ -163,7 +99,7 @@ function get_f(eom, k::Vector)
     end
     # show (j=1) ω for different times
     # @show ωj[1:end, 1]
-    # @show abs.(c_n[1, :]), abs.(c_n[end, :])
+    @show abs.(c_n[1, :]), abs.(c_n[end, :])
     
     # @show size(ωj), size(t_new[indices])
 
@@ -205,7 +141,7 @@ function get_f(eom, k::Vector)
     for i in 1:N
     # iterate over different oscillations
         X = a_new[indices[i]] .* ωj[i, :] ./ 2 / eom.aₑ / eom.Hₑ
-        @show X
+        # @show X
         # ~ n^2 / H
         Y = [4*π/ωj[i, j]^3 * V_new[indices[i]]^2 * abs2(c_n[i, j]) / H_new[indices[i]] for j in 1:num_j]
         f += Interpolate(X, Y, extrapolate=LinearInterpolations.Constant(0.0)).(k)
