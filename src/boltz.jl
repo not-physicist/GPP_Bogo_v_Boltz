@@ -12,7 +12,7 @@ using CubicSplines, LinearInterpolations, NumericalIntegration, Peaks, Statistic
 interpolate "signal" using cubic spline
 """
 function _get_dense(x, y)
-    Δx = minimum(diff(x)) / 2
+    Δx = minimum(diff(x)) / 5
     x_new = range(x[1], x[end], step=Δx)
     intp = CubicSpline(x, y)
     y_new = intp[x_new]
@@ -25,12 +25,6 @@ assume the input is exactly one period
 """
 function _get_c_n(x, y, P, n::Int)
     ω = 2*π*n/P
-    # x_new = range(x[1], x[end], step=minimum(diff(x))/(20*n))
-    # y_new = Interpolate(x, y).(x_new)
-
-    # integrand = @. y_new*exp(-1.0im*ω*x_new)
-    # @show integrand
-    # cₙ = 1/P * integrate(x_new, integrand)
     
     y_itp = Interpolate(x, y)
     res = quadgk(k -> y_itp(k)*exp(-1.0im*ω*k), x[1], x[end])[1]
@@ -44,8 +38,14 @@ decompose the oscillations of inflaton into fourier series
 
 k in unit of aₑHₑ
 """
-function get_f(eom, k::Vector)
-    num_j = 100
+function get_f(eom, k::Vector, model::Symbol)
+    # how many fourier modes to compute
+    # for n=2, it doesn't need to be very large
+    if model == :quadratic
+        num_j = 10
+    else 
+        num_j = 100 
+    end
 
     #=
     Process the eom arrays first
@@ -66,16 +66,8 @@ function get_f(eom, k::Vector)
     Find maxima of V(t)
     =#
     indices = @time argmaxima(V_new)
-    # add first "oscillation" gives lower momenta, but UV end will be messed up
-    # pushfirst!(indices, 1)
-    periods = diff(t_new[indices])
-    # @show diff(log10.(periods))
-    # @show V_new[indices]
-    # @show diff(log.(periods)) ./ diff(log.(t_new[indices[1:end-1]]))
-    # @show mean(periods), std(periods)
     N = size(indices)[1] - 1
-    # @info V_new[1], V_new[indices[1]]
-    # @info @. a_new[indices[1:end-1]] * (2π/periods) / (2 * eom.aₑ * eom.Hₑ)
+    # @show N
     
     #=
     Get Fourier series for each oscillation
@@ -87,7 +79,6 @@ function get_f(eom, k::Vector)
     Threads.@threads for i in 1:N 
         i1 = indices[i]
         i2 = indices[i+1]
-        # @show P
     
         # get t and V for a single oscillation
         t_osci = t_new[i1:i2] .- t_new[i1]
@@ -99,19 +90,15 @@ function get_f(eom, k::Vector)
     end
     # show (j=1) ω for different times
     # @show ωj[1:end, 1]
-    @show abs.(c_n[1, :]), abs.(c_n[end, :])
+    # @show abs.(c_n[1, :]), abs.(c_n[end, :])
     
-    # @show size(ωj), size(t_new[indices])
-
     #=
     Now compute the spectrum
     First compute the f only at the maxima (given by indices)
     Then interpolate for dense output
     =#
-
-
-    #=
-    # First method: godd for n=2, n=4 a bit strange
+   
+    # First method: good for n=2, n=4 a bit strange
     f = zeros(size(k))
     for j in 1:num_j
         # iterate over j (different fourier modes)
@@ -120,22 +107,32 @@ function get_f(eom, k::Vector)
             n2_H[i] = 4*π/ωj[i, j]^3 * V_new[indices[i]]^2 * abs2(c_n[i, j]) / H_new[indices[i]]
         end
         
+        # to be interpolated as k/a_e H_e
         X = a_new[indices[1:end-1]] .* ωj[:, j] ./ 2 / eom.aₑ / eom.Hₑ
+        if j == 1
+            @show X
+        end
         # indices for the sorted array
         Y = n2_H
         # @info X[1:argmax(X)] X[argmax(X):end]
         # @info X[1]
-        try
+        if model == :quadratic
             n2_H_dense = Interpolate(X, Y, extrapolate=LinearInterpolations.Constant(0.0)).(k)
             f += n2_H_dense
-        catch e
+        elseif model == :quartic
             n2_H_dense = Interpolate(X[1:argmax(X)], Y[1:argmax(X)], extrapolate=LinearInterpolations.Constant(0.0)).(k)
             f += n2_H_dense
             f += Interpolate(X[end:-1:argmax(X)], Y[end:-1:argmax(X)], extrapolate=LinearInterpolations.Constant(0.0)).(k)
+        elseif model == :sextic
+            sort_ind = sortperm(X)
+            f += Interpolate(X[sort_ind], Y[sort_ind], extrapolate=LinearInterpolations.Constant(0.0)).(k)
+        else
+            return ArgumentError("Model not implemented!")
         end
     end
-    =# 
+    return f
     
+    #=
     # Second method: n=2 spectrum enhanced for whatever reason, n=4 alright
     f = zeros(size(k))
     for i in 1:N
@@ -146,13 +143,13 @@ function get_f(eom, k::Vector)
         Y = [4*π/ωj[i, j]^3 * V_new[indices[i]]^2 * abs2(c_n[i, j]) / H_new[indices[i]] for j in 1:num_j]
         f += Interpolate(X, Y, extrapolate=LinearInterpolations.Constant(0.0)).(k)
     end
-    # @show f
-    return f
+    =#
     
     #=
+    # To get uninterpolated spectrum
     # Third method: n=2 spotty, but not so bad, bad for n=4
-    k_new = []
-    f = []
+    k_new = Vector{Float64}(undef, 0)
+    f = Vector{Float64}(undef, 0)
     for i in 1:N
     # iterate over different oscillations
         X = a_new[indices[i]] .* ωj[i, :] ./ 2 / eom.aₑ / eom.Hₑ
@@ -162,17 +159,23 @@ function get_f(eom, k::Vector)
         f = [f; Y]
     end
     sort_ind = sortperm(k_new)
-    # @show k_new[sort_ind], f[sort_ind]
-    return Interpolate(k_new[sort_ind], f[sort_ind], extrapolate=LinearInterpolations.Constant(0.0)).(k)
+    @show k_new[sort_ind], f[sort_ind]
+    # return Interpolate(k_new[sort_ind], f[sort_ind], extrapolate=LinearInterpolations.Constant(0.0)).(k)
+    return k_new[sort_ind], f[sort_ind]
     =#
 end
 
-function save_all(num_k, data_dir, log_k_i=0, log_k_f=2)
+function save_all(num_k, data_dir, model, log_k_i=0, log_k_f=2)
     @info data_dir
     eom = deserialize(data_dir * "eom.dat")
 
     k = @. logspace(log_k_i, log_k_f, num_k)
-    f = @time get_f(eom, k)
+    f = @time get_f(eom, k, model)
+
+    # here to trim the array
+    # remove f = 0 part
+    # indices = findall(x->x!=0, f)
+    # @show indices
 
     # mkpath(data_dir)
     npzwrite(data_dir * "spec_boltz.npz", Dict(

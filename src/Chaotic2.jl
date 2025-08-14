@@ -58,7 +58,7 @@ end
 function save_all_spec()
     # m_array = logspace(-4, -6, 3)
     m_array = [1e-5]
-    Γ_m_array = logspace(-3, -1, 3)
+    Γ_m_array = logspace(-2, -1, 3)
     num_k = 100
     # @show m_array, Γ_array, logspace(-3, -1, 3)
     
@@ -72,7 +72,7 @@ function save_all_spec()
 
             # save_eom(m, Γ, data_dir)
             # PPs.save_all(num_k, data_dir)
-            Boltzmann.save_all(num_k, data_dir)
+            Boltzmann.save_all(num_k, data_dir, :quadratic)
         end
     end
 end

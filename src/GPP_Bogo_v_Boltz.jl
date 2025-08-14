@@ -23,4 +23,8 @@ include("Chaotic4.jl")
 using .Chaotic4
 export Chaotic4
 
+include("Chaotic6.jl")
+using .Chaotic6 
+export Chaotic6 
+
 end

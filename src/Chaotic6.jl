@@ -1,8 +1,7 @@
 """
-Chaotic n=4 inflation
+chaotic n=6 inflation
 """
-
-module Chaotic4 
+module Chaotic6
 
 using ..Commons 
 using ..EOMs
@@ -10,17 +9,17 @@ using ..PPs
 using ..TModel 
 using ..Boltzmann
 
-using StaticArrays, Logging, Printf, Serialization, NPZ, NumericalIntegration, LinearInterpolations
+using Printf, StaticArrays
 
-const MODEL_NAME = "Chaotic4"
+const MODEL_NAME = "Chaotic6"
 const MODEL_DATA_DIR = "data/$MODEL_NAME/"
 
 function get_V(ϕ, l)
-    return l * ϕ^4 
+    return l * ϕ^6
 end 
 
 function get_dV(ϕ, l)
-    return l * 4 * ϕ^3
+    return l * 6 * ϕ^5
 end
 
 """
@@ -30,7 +29,7 @@ function get_l(r)
     # ACT best fit
     ns = 0.974
     # dont care about ϕᵢ, set to 0.0
-    tmodel = TModel.TModels(4, ns, r, 0.0)
+    tmodel = TModel.TModels(6, ns, r, 0.0)
     return TModel.get_λ(tmodel)
 end
 
@@ -58,17 +57,11 @@ function save_eom(l, Γ, data_dir)
     return nothing
 end
 
-test_eom() = save_eom(get_l(0.001), 1e-8, MODEL_DATA_DIR * "test/")
-test_spec() = PPs.save_all(100, MODEL_DATA_DIR * "test/")
-
 function save_all_spec()
-    r_array = [0.0045] 
-    # Γ_array = [1e-10, 1e-11, 1e-12]
-    Γ_array = [1e-11]
+    r_array = [0.0045]
+    Γ_array = [1e-12]
 
-    # r_array = [0.00045, 0.0045]
-    # Γ_array = [1e-10]
-    num_k = 200 
+    num_k = 100 
 
     for r in r_array 
         for Γ in Γ_array
@@ -80,12 +73,12 @@ function save_all_spec()
             @info "Model parameter (in GeV): " l, Γ
 
             # save_eom(l, Γ, data_dir)
-            # PPs.save_all(num_k, data_dir, -2, 2)
-            Boltzmann.save_all(num_k, data_dir, :quartic, 0, 2)
+            # PPs.save_all(num_k, data_dir, -1, 2)
+            Boltzmann.save_all(num_k, data_dir, :sextic, 0, 2)
 
-            @printf "==============================I am a separator===================================\n"
+            @printf "===============================================I am a separator============================================================\n"
         end
     end
-end
+end 
 
 end

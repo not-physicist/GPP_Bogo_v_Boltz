@@ -51,11 +51,11 @@ def plot_back_single(dn):
     ax1.plot(N, phi, c="k")
     # w = get_eos(a, H)
     w = data["w"]
-    w_smooth = gaussian_filter1d(w, 10)
+    w_smooth = gaussian_filter1d(w, 50)
     # print(w_smooth[::100])
     ax1.plot(N, w, c="tab:blue", alpha=0.3)
     ax1.plot(N, w_smooth, c="tab:blue", alpha=1.0)
-    # ax1.set_ylim(-1, 1)
+    ax1.set_ylim(-1, 2)
     # ax1.legend()
     ax1.set_xlabel("$ln(a)$")
     ax1.set_ylabel(r"$\phi/m_{pl}$")
@@ -204,18 +204,19 @@ def draw_spec(dn, AX, AX2, label_pref, m_phi, Γ, c, ls):
 
     # AX.plot(k, formula.get_f_ana(k, H_e, m_phi, Γ), color="tab:cyan", label="approx. Boltz.")
     AX.plot(k, n, ls=ls, color="k", label=label_pref+"Bogo.", alpha=0.5)
-    
-    fn = join(dn, "spec_boltz.npz")
-    # print(fn)
-    data = np.load(fn)
-    k = data["k"]
-    f = data["f"]
-    # print(k, f)
-    AX.plot(k, f, color="k", ls="dotted", label=label_pref + "exact Boltz.")
+ 
+    try:
+        fn = join(dn, "spec_boltz.npz")
+        # print(fn)
+        data = np.load(fn)
+    except:
+        print("No boltzmann resutls found. SKIPPING...")
+    else:
+        k = data["k"]
+        f = data["f"]
+        # print(k, f)
+        AX.plot(k, f, color="k", ls="dotted", label=label_pref + "exact Boltz.")
 
-    # peaks = [0.8776563490417942, 1.7553126980835885, 2.6329690471253824, 3.510625396167177]
-    # for i in peaks:
-    #     AX.plot([i, i], [1e-20, 1e10], color="grey", alpha=0.2)
     
     if AX2 is not None:
         f = formula.get_f(k, a_e/a_rh, H_e, Γ)
@@ -257,8 +258,8 @@ def plot_all(dn):
     ax = fig.add_subplot()
 
     # for Ω_gw plot 
-    fig2 = plt.figure(2)
-    ax2 = fig2.add_subplot()
+    # fig2 = plt.figure(2)
+    # ax2 = fig2.add_subplot()
     
     # linestyles for different Γ/m values
     ls_array = ["solid", "dashed", "dashdot", "dotted"]
@@ -294,14 +295,14 @@ def plot_all(dn):
         color = color_array[m_array.index(m)]
         # ls = ls_array[Γm_array.index(round(Γ/m, 4))]
         ls = None
-        draw_spec(full_dn, ax, ax2, "", m, Γ, color, ls)
+        draw_spec(full_dn, ax, None, "", m, Γ, color, ls)
   
     ax.set_xlabel(r"$k/a_e H_e$")
     ax.set_ylabel(r"$f=|\beta_k|^2$")
     ax.set_xscale("log")
     ax.set_yscale("log")
     ax.set_xlim(1, 1e2)
-    ax.set_ylim(1e-10, 1e1)
+    ax.set_ylim(1e-15, 1e1)
     
     # only showing first three handles; avoid duplicates
     handles, labels = ax.get_legend_handles_labels()
@@ -312,9 +313,8 @@ def plot_all(dn):
     fig.tight_layout()
     fig.savefig(dn.replace("data", "figs") + "spec_all.pdf", bbox_inches="tight")
     plt.close(1)
-
-    # ax.set_xlabel("$k/a_e H_e$")
-    # ax.set_ylabel(r"$a_0^4 \rho_{h, k} / (a_eH_e)^4$")
+    
+    """
     ax2.set_xlabel("$f/Hz$")
     ax2.set_ylabel(r"$\Omega_{gw, 0}h^2 $")
     ax2.set_xscale("log")
@@ -325,6 +325,7 @@ def plot_all(dn):
     fig2.tight_layout()
     fig2.savefig(dn.replace("data", "figs") + "GW_spec_all.pdf", bbox_inches="tight")
     plt.close(2)
+    """
 
 def check_H(dn):
     fn = join(dn, "eom.npz")
@@ -479,9 +480,13 @@ if __name__ == "__main__":
     # plot_back_single("../data/Chaotic4/r=4.5e-03-Γ=1.0e-12")
     # plot_back_single("../data/Chaotic4/test")
     # plot_spec_single("../data/Chaotic4/test")
-    plot_all("../data/Chaotic4/")
+    # plot_all("../data/Chaotic4/")
 
     # plot_k_every("../data/Chaotic4/r=4.5e-03-Γ=1.0e-10/")
     # plot_k_every("../data/Chaotic4/r=1.0e-03-Γ=1.0e-10/")
     # plot_k_every("../data/Chaotic4/r=4.5e-04-Γ=1.0e-10/")
     # plot_k_every("../data/Chaotic2/test/")
+
+    # plot_back_single("../data/Chaotic6/r=4.5e-03-Γ=1.0e-12")
+    # plot_back_single("../data/Chaotic6/r=4.5e-03-Γ=1.0e-10")
+    plot_all("../data/Chaotic6/")
