@@ -33,6 +33,37 @@ function _get_c_n(x, y, P, n::Int)
 end
 
 """
+    Get Fourier series for each oscillation
+    separate arrays for frequencies and four. coeffcients 
+    two-dimensional: time and multiples of fundamental frequency
+"""
+function get_four_coeff(num_j, t, V_ρ)
+    indices = @time argmaxima(V_ρ)
+    # N = size(indices)[1] - 1
+    # @show N
+    # @show indices
+    
+    N = size(indices)[1]
+    pushfirst!(indices, 1)
+
+    ωj = zeros(Float64, (N, num_j))
+    c_n = zeros(ComplexF64, (N, num_j))
+    Threads.@threads for i in 1:N 
+        i1 = indices[i]
+        i2 = indices[i+1]
+    
+        # get t and (normalized) V for a single oscillation
+        t_osci = t[i1:i2] .- t[i1]
+        V_osci = (V_ρ)[i1:i2]
+        P = t_osci[end] - t_osci[1]
+        tmp = [_get_c_n(t_osci, V_osci, P, j) for j in 1:num_j]
+        ωj[i, :] = [x[1] for x in tmp]
+        c_n[i, :] = [x[2] for x in tmp]
+    end
+    return N, indices, ωj, c_n
+end
+
+"""
 compute the Boltzmann phase space distribution
 decompose the oscillations of inflaton into fourier series
 
@@ -62,42 +93,17 @@ function get_f(eom, k::Vector, model::Symbol)
     ρ_ϕ = @. eom.Ω_ϕ * 3 * eom.H^2
     ρ_new = Interpolate(eom.t[a_mask], ρ_ϕ[a_mask]).(t_new)
     
-    #=
-    Find maxima of V(t)
-    =#
-    indices = @time argmaxima(V_new)
-    N = size(indices)[1] - 1
-    # @show N
-    
-    #=
-    Get Fourier series for each oscillation
-    separate arrays for frequencies and four. coeffcients 
-    two-dimensional: time and multiples of fundamental frequency
-    =#
-    ωj = zeros(Float64, (N, num_j))
-    c_n = zeros(ComplexF64, (N, num_j))
-    Threads.@threads for i in 1:N 
-        i1 = indices[i]
-        i2 = indices[i+1]
-    
-        # get t and V for a single oscillation
-        t_osci = t_new[i1:i2] .- t_new[i1]
-        V_osci = (V_new ./ ρ_new)[i1:i2]
-        P = t_osci[end] - t_osci[1]
-        tmp = [_get_c_n(t_osci, V_osci, P, j) for j in 1:num_j]
-        ωj[i, :] = [x[1] for x in tmp]
-        c_n[i, :] = [x[2] for x in tmp]
-    end
+    N, indices, ωj, c_n = get_four_coeff(num_j, t_new, V_new ./ ρ_new)
     # show (j=1) ω for different times
-    # @show ωj[1:end, 1]
-    # @show abs.(c_n[1, :]), abs.(c_n[end, :])
+    @show ωj[1:end, 1]
+    @show abs.(c_n[1, :]), abs.(c_n[end, :])
     
     #=
     Now compute the spectrum
     First compute the f only at the maxima (given by indices)
     Then interpolate for dense output
     =#
-   
+           
     # First method: good for n=2, n=4 a bit strange
     f = zeros(size(k))
     for j in 1:num_j
@@ -171,11 +177,6 @@ function save_all(num_k, data_dir, model, log_k_i=0, log_k_f=2)
 
     k = @. logspace(log_k_i, log_k_f, num_k)
     f = @time get_f(eom, k, model)
-
-    # here to trim the array
-    # remove f = 0 part
-    # indices = findall(x->x!=0, f)
-    # @show indices
 
     # mkpath(data_dir)
     npzwrite(data_dir * "spec_boltz.npz", Dict(
