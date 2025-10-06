@@ -461,6 +461,20 @@ def plot_k_every(dn):
     plt.savefig(fig_fn, bbox_inches="tight")
     plt.close()
 
+def plot_all_n():
+    """
+    plot the energy parameter of models with different n's together
+    Fix the reheating temp also
+    """
+    r = 0.01 
+    Γ = 1e-9
+    dirs = [f"../data/Chaotic{x}/r={r:.1e}-Γ={Γ:.1e}/" for x in [2, 4, 6]]
+    # print(dirs)
+    for dn in dirs:
+        fn = join(dn, "eom.npz")
+        data = np.load(fn)
+        print(data["H_e"])
+
 
 if __name__ == "__main__":
     # plot_back_single("../data/Chaotic2/test")
@@ -471,6 +485,8 @@ if __name__ == "__main__":
     # check_H("../data/Chaotic2/m=1.0e-05-Γ=1.0e-06/")
 
     # plot_all("../data/TModel-n=2/")
+    # plot_back_single("../data/TModel-n=6/r=1.0e-02-Γ=1.0e-10/")
+    # plot_spec_single("../data/TModel-n=2/r=1.0e-02-Γ=1.0e-07/")
 
     # plot_comp_chaotic_tmodel()
     # check_H("../data/TModel-n=2/r=4.5e-03-Γ=1.0e-06/")
@@ -489,4 +505,6 @@ if __name__ == "__main__":
 
     # plot_back_single("../data/Chaotic6/r=4.5e-03-Γ=1.0e-12")
     # plot_back_single("../data/Chaotic6/r=4.5e-03-Γ=1.0e-10")
-    plot_all("../data/Chaotic6/")
+    # plot_all("../data/Chaotic6/"
+
+    plot_all_n()

@@ -43,6 +43,7 @@ end
 get parameters for (Taylored) monomial potential 
 """
 function get_λ(model)
+    @show model.α
     return model.V₀ / ((6*model.α)^(model.n))
 end
 
@@ -66,7 +67,7 @@ end
 ϕᵢ: in unit of ϕₑ (field value at end of slow roll)
 init_time_mul: initial (conformal) time multiplicant; needs to make the simulation run longer for large r 
 """
-function save_eom(ϕᵢ::Float64, r::Float64, Γ::Float64, n::Int64, data_dir::String)
+function save_eom(ϕᵢ, r, Γ, n, data_dir::String)
     # mkpath(data_dir)
 
     model = TModels(n, 0.965, r, ϕᵢ)
@@ -80,15 +81,17 @@ function save_eom(ϕᵢ::Float64, r::Float64, Γ::Float64, n::Int64, data_dir::S
 
     # @info "Initial conditions are: ", ϕᵢ, dϕᵢ
     u₀ = SA[ϕᵢ, dϕᵢ, 1.0, 0.0]
-    tspan = (0.0, 1e7)
+    tspan = (0.0, 1e10)
 
     # parameters
     _V(x) = get_V(x, model)
     _dV(x) = get_dV(x, model)
     _m_eff(x) = get_m_eff(x, model)
-    p = (_V, _dV, Γ)
+    α = 3 * (n-2)/(n+2)
+    p = (_V, _dV, Γ, α)
+    dtmax = 2*π/_m_eff(0.0) / 100
     
-    EOMs.save_all(u₀, tspan, p, data_dir, _m_eff)
+    EOMs.save_all(u₀, tspan, p, data_dir, _m_eff, dtmax)
 
     return nothing
 end
@@ -97,23 +100,26 @@ end
 # save_eom_benchmark() = save_eom(3.6, 0.0045, 1e-7, 2)
 # save_f_benchmark() = PPs.save_all(100, MODEL_DATA_DIR*"0.0045/")
 
+function save_single(ϕᵢ, r, Γ, n, num_k)
+    data_dir = @sprintf "%s-n=%i/r=%.1e-Γ=%.1e/" MODEL_DATA_DIR n r Γ
+    @info data_dir
+    mkpath(data_dir)
+    @info "Model parameter (in GeV): " r, Γ
+
+    save_eom(ϕᵢ, r, Γ, n, data_dir)
+    PPs.save_all(num_k, data_dir)
+    # Boltzmann.save_all(num_k, data_dir)
+end
+
 function save_all_spec()
     r_array = [0.0045]
     Γ_array = logspace(-8, -6, 3)
     num_k = 100
+    n = 2
 
     for r in r_array 
         for Γ in Γ_array
-            n = 2
-
-            data_dir = @sprintf "%s-n=%i/r=%.1e-Γ=%.1e/" MODEL_DATA_DIR n r Γ
-            @info data_dir
-            mkpath(data_dir)
-            @info "Model parameter (in GeV): " r, Γ
-
-            # save_eom(3.6, r, Γ, 2, data_dir)
-            # PPs.save_all(num_k, data_dir)
-            # Boltzmann.save_all(num_k, data_dir)
+            save_single(ϕᵢ, r, Γ, n, num_k)
         end 
     end 
     return nothing

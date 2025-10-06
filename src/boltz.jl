@@ -8,16 +8,18 @@ using ..Commons
 
 using CubicSplines, LinearInterpolations, NumericalIntegration, Peaks, Statistics, Serialization, NPZ, QuadGK
 
+#=
 """
 interpolate "signal" using cubic spline
 """
 function _get_dense(x, y)
-    Δx = minimum(diff(x)) / 5
+    Δx = minimum(diff(x)) / 2
     x_new = range(x[1], x[end], step=Δx)
     intp = CubicSpline(x, y)
     y_new = intp[x_new]
     return x_new, y_new 
 end
+=#
 
 """
 get (complex) a single fourier coefficient using the integral formula
@@ -26,10 +28,11 @@ assume the input is exactly one period
 function _get_c_n(x, y, P, n::Int)
     ω = 2*π*n/P
     
-    y_itp = Interpolate(x, y)
-    res = quadgk(k -> y_itp(k)*exp(-1.0im*ω*k), x[1], x[end])[1]
-    cₙ = 1/P * res[1]
-    return ω, cₙ
+    y_itp = CubicSpline(x, y)
+    # y_itp = Interpolate(x, y)
+    res = quadgk(k -> y_itp(k)*exp(-1.0im*ω*k)/P, x[1], x[end])
+    # @show res
+    return ω, res[1]
 end
 
 """
@@ -38,13 +41,24 @@ end
     two-dimensional: time and multiples of fundamental frequency
 """
 function get_four_coeff(num_j, t, V_ρ)
-    indices = @time argmaxima(V_ρ)
-    # N = size(indices)[1] - 1
-    # @show N
-    # @show indices
+    # use minima, start from first minima
+    indices = argminima(V_ρ)
+    N = size(indices)[1] - 1
     
-    N = size(indices)[1]
-    pushfirst!(indices, 1)
+    # use maxima, start from end of inflation already
+    # indices = argmaxima(V_ρ)
+    # N = size(indices)[1]
+    # pushfirst!(indices, 1)
+
+    # @show N
+    # Remove last few oscillations
+    # indices = indices[1:20]
+    # N = size(indices)[1] - 1
+    @show diff(indices)
+    if any(x -> x < num_j, diff(indices))
+        @warn "Number of points in one period could be lower than num_j; Fourier series should not be trusted in this case!" diff(indices) num_j
+    end
+    # @show V_ρ[indices]
 
     ωj = zeros(Float64, (N, num_j))
     c_n = zeros(ComplexF64, (N, num_j))
@@ -56,6 +70,7 @@ function get_four_coeff(num_j, t, V_ρ)
         t_osci = t[i1:i2] .- t[i1]
         V_osci = (V_ρ)[i1:i2]
         P = t_osci[end] - t_osci[1]
+        # @show P
         tmp = [_get_c_n(t_osci, V_osci, P, j) for j in 1:num_j]
         ωj[i, :] = [x[1] for x in tmp]
         c_n[i, :] = [x[2] for x in tmp]
@@ -75,7 +90,7 @@ function get_f(eom, k::Vector, model::Symbol)
     if model == :quadratic
         num_j = 10
     else 
-        num_j = 100 
+        num_j = 20 
     end
 
     #=
@@ -84,7 +99,8 @@ function get_f(eom, k::Vector, model::Symbol)
     interpolate the input, better fourier series
     =#
     # @show eom.t[1], (eom.t[eom.a .>= eom.aₑ])[1]*1e-5/π
-    a_mask = eom.a .>= eom.aₑ
+    # a_mask = eom.a .>= eom.aₑ
+    a_mask = eom.a .>= eom.aₑ/5
     # t_new, V_new = @time _get_dense(eom.t[a_mask], eom.V[a_mask])
     t_new = eom.t[a_mask]
     V_new = eom.V[a_mask]
@@ -92,11 +108,13 @@ function get_f(eom, k::Vector, model::Symbol)
     a_new = Interpolate(eom.t[a_mask], eom.a[a_mask]).(t_new)
     ρ_ϕ = @. eom.Ω_ϕ * 3 * eom.H^2
     ρ_new = Interpolate(eom.t[a_mask], ρ_ϕ[a_mask]).(t_new)
+    # @show a_new[1], H_new[1]
     
-    N, indices, ωj, c_n = get_four_coeff(num_j, t_new, V_new ./ ρ_new)
+    N, indices, ωj, c_n = @time get_four_coeff(num_j, t_new, V_new ./ ρ_new)
     # show (j=1) ω for different times
-    @show ωj[1:end, 1]
-    @show abs.(c_n[1, :]), abs.(c_n[end, :])
+    # @show ωj[1:end, 1]
+    # @show log.(abs.(c_n[1, :]))
+    # @show log.(abs.(c_n[end, :]))
     
     #=
     Now compute the spectrum
@@ -110,14 +128,14 @@ function get_f(eom, k::Vector, model::Symbol)
         # iterate over j (different fourier modes)
         n2_H = zeros(N)
         Threads.@threads for i in 1:N
-            n2_H[i] = 4*π/ωj[i, j]^3 * V_new[indices[i]]^2 * abs2(c_n[i, j]) / H_new[indices[i]]
+            n2_H[i] = 4*π/ωj[i, j]^3 * ρ_new[indices[i]]^2 * abs2(c_n[i, j]) / H_new[indices[i]]
         end
         
         # to be interpolated as k/a_e H_e
-        X = a_new[indices[1:end-1]] .* ωj[:, j] ./ 2 / eom.aₑ / eom.Hₑ
-        if j == 1
-            @show X
-        end
+        X = a_new[indices[1:end-1]] .* ωj[:, j] ./ 2 / a_new[1] / H_new[1]
+        # if j == 1
+        #     @show X
+        # end
         # indices for the sorted array
         Y = n2_H
         # @info X[1:argmax(X)] X[argmax(X):end]
@@ -179,6 +197,7 @@ function save_all(num_k, data_dir, model, log_k_i=0, log_k_f=2)
     f = @time get_f(eom, k, model)
 
     # mkpath(data_dir)
+    @show k, f
     npzwrite(data_dir * "spec_boltz.npz", Dict(
         "k" => k,
         "f" => f,

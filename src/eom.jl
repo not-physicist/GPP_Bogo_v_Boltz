@@ -127,8 +127,8 @@ function solve_eom(u₀::SVector{4, Float64},
     # callback: terminate at ρ_ϕ / ρ_tot = 1e-5
     _Omega_ϕ(u) = _get_Omega_ϕ(u, p)
     condition2(u, t, integrator) = ( _Omega_ϕ(u) <= 1e-5)
-    affect!(integrator) = terminate!(integrator)
-    cb2 = DiscreteCallback(condition2, affect!)
+    affect2!(integrator) = terminate!(integrator)
+    cb2 = DiscreteCallback(condition2, affect2!)
     u₁ = SA[sol[1, end], sol[2, end], sol[3, end], sol[4, end]]
     tspan2 = (sol.t[end], tspan[2])
     prob = ODEProblem(_get_f, u₁, tspan2, p)
@@ -286,7 +286,7 @@ function save_all(u₀, tspan, p, data_dir, dtmax)
     return nothing
 end
 
-#=
+
 """
 methods with additional argument: m_eff 
 mainly for TModel
@@ -317,8 +317,8 @@ function save_eom_npz(eom::EOMData, data_dir, m_eff)
 end
 
 
-function save_all(u₀, tspan, p, data_dir, m_eff)
-    eom_data = @time solve_eom(u₀, tspan, p)
+function save_all(u₀, tspan, p, data_dir, m_eff, dtmax)
+    eom_data = @time solve_eom(u₀, tspan, p, dtmax)
 
     mkpath(data_dir)
     # serialize for Bogoliubov computation
@@ -326,5 +326,5 @@ function save_all(u₀, tspan, p, data_dir, m_eff)
     save_eom_npz(eom_data, data_dir, m_eff)
     return nothing
 end
-=#
+
 end

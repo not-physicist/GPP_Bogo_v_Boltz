@@ -50,7 +50,7 @@ function save_eom(l, Γ, data_dir)
 
     # order of magnitude estimate for oscillation frequency
     ωStar = 10 * sqrt(l) * 2 * sqrt(3) 
-    dtmax = 1/ωStar / 1000
+    dtmax = 1/ωStar / 100000
     @show ωStar dtmax
 
     EOMs.save_all(u₀, tspan, p, data_dir, dtmax)
@@ -59,7 +59,7 @@ end
 
 function save_all_spec()
     r_array = [0.0045]
-    Γ_array = [1e-12]
+    Γ_array = [1e-10]
 
     num_k = 100 
 

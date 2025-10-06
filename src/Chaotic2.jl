@@ -7,12 +7,25 @@ module Chaotic2
 using ..Commons
 using ..EOMs
 using ..PPs
+using ..TModel 
 using ..Boltzmann
 
 using StaticArrays, Logging, Printf, Serialization, NPZ, NumericalIntegration, LinearInterpolations
 
 const MODEL_NAME = "Chaotic2"
 const MODEL_DATA_DIR = "data/$MODEL_NAME/"
+
+"""
+get the potential parameter l from desired n_s and r by matching to T Model 
+"""
+function get_m(r)
+    # ACT best fit
+    ns = 0.974
+    # dont care about ϕᵢ, set to 0.0
+    tmodel = TModel.TModels(2, ns, r, 0.0)
+    m = sqrt(2 * TModel.get_λ(tmodel))
+    return m
+end
 
 function get_V(ϕ, m)
     return m^2 * ϕ^2 / 2.
@@ -33,7 +46,7 @@ function save_eom(m::Float64, Γ::Float64, data_dir)
     dϕᵢ = get_dϕ_SR(dVᵢ, Vᵢ, 1.0)
 
     u₀ = SA[ϕᵢ, dϕᵢ, 1.0, 0.0]
-    tspan = (0.0, 1e10)
+    tspan = (0.0, 1e11)
     _V(x) = get_V(x, m)
     _dV(x) = get_dV(x, m)
     α = 0
@@ -70,8 +83,8 @@ function save_all_spec()
             # @info "data_dir = $(data_dir)" 
             @info "Model parameter (in GeV): " m, Γ
 
-            # save_eom(m, Γ, data_dir)
-            # PPs.save_all(num_k, data_dir)
+            save_eom(m, Γ, data_dir)
+            PPs.save_all(num_k, data_dir)
             Boltzmann.save_all(num_k, data_dir, :quadratic)
         end
     end

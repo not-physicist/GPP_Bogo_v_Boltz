@@ -1,7 +1,14 @@
 ###########################################
 # contains formulas as functions
 ###########################################
+gStar = 106.75
+
 import numpy as np
+
+#####################################################################
+
+def get_T_rh(Γ):
+    return 1.41 * gStar**(-1/4) * Γ**(1/2)
 
 def get_f(k, a_e_rh, H_e, Γ):
     """
@@ -11,14 +18,18 @@ def get_f(k, a_e_rh, H_e, Γ):
 
     returns frequency in hertz
     """
-    return 1.80e10 * k * a_e_rh * H_e * Γ**(-1/2)
+    # return 1.80e10 * k * a_e_rh * H_e * Γ**(-1/2)
+    return 18.8e9 * k * a_e_rh * H_e / get_T_rh(Γ)
 
 def get_Ω_gw0(ρ, a_e_rh, H_e, Γ):
     """
     calculate current GW energy parameter
     ρ = a^4 ρ / a_e^4 H_e^4
     """
-    return 3.83e-14 * ρ * a_e_rh**4 * H_e**4 * Γ**(-2)
+    # return 3.83e-14 * ρ * a_e_rh**4 * H_e**4 * Γ**(-2)
+    return 4.54e5 * ρ * a_e_rh**4 * (H_e/get_T_rh(Γ))**4
+
+#####################################################################
 
 def get_f_ana(k, Hₑ, mᵩ, Γ):
     """

@@ -51,7 +51,8 @@ function save_eom(l, Γ, data_dir)
 
     # order of magnitude estimate for oscillation frequency
     ωStar = 10 * sqrt(l) * 2 * sqrt(3) 
-    dtmax = 1/ωStar / 1000
+    # so that ~1000 points for one oscillation initially
+    dtmax = 1/ωStar / 1000000
     @show ωStar dtmax
 
     EOMs.save_all(u₀, tspan, p, data_dir, dtmax)
@@ -64,7 +65,7 @@ test_spec() = PPs.save_all(100, MODEL_DATA_DIR * "test/")
 function save_all_spec()
     r_array = [0.0045] 
     # Γ_array = [1e-10, 1e-11, 1e-12]
-    Γ_array = [1e-11]
+    Γ_array = [1e-10]
 
     # r_array = [0.00045, 0.0045]
     # Γ_array = [1e-10]
@@ -79,7 +80,7 @@ function save_all_spec()
             l = get_l(r)
             @info "Model parameter (in GeV): " l, Γ
 
-            # save_eom(l, Γ, data_dir)
+            save_eom(l, Γ, data_dir)
             # PPs.save_all(num_k, data_dir, -2, 2)
             Boltzmann.save_all(num_k, data_dir, :quartic, 0, 2)
 
