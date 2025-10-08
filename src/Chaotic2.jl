@@ -68,6 +68,17 @@ function save_f(num_k=100, data_dir=MODEL_DATA_DIR)
 end
 =#
 
+function save_single(m, Γ, num_k)
+    data_dir = @sprintf "%sm=%.1e-Γ=%.1e/" MODEL_DATA_DIR m Γ
+    mkpath(data_dir)
+    # @info "data_dir = $(data_dir)" 
+    @info "Model parameter (in GeV): " m, Γ
+
+    save_eom(m, Γ, data_dir)
+    PPs.save_all(num_k, data_dir)
+    # Boltzmann.save_all(num_k, data_dir, :quadratic)
+end
+
 function save_all_spec()
     # m_array = logspace(-4, -6, 3)
     m_array = [1e-5]
@@ -78,14 +89,7 @@ function save_all_spec()
     for m in m_array
         for Γ_m in Γ_m_array
             Γ = Γ_m * m
-            data_dir = @sprintf "%sm=%.1e-Γ=%.1e/" MODEL_DATA_DIR m Γ
-            mkpath(data_dir)
-            # @info "data_dir = $(data_dir)" 
-            @info "Model parameter (in GeV): " m, Γ
-
-            save_eom(m, Γ, data_dir)
-            PPs.save_all(num_k, data_dir)
-            Boltzmann.save_all(num_k, data_dir, :quadratic)
+            save_single(m, Γ, num_k)
         end
     end
 end

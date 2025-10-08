@@ -62,6 +62,19 @@ end
 test_eom() = save_eom(get_l(0.001), 1e-8, MODEL_DATA_DIR * "test/")
 test_spec() = PPs.save_all(100, MODEL_DATA_DIR * "test/")
 
+function save_single(r, Γ, num_k)
+    data_dir = @sprintf "%sr=%.1e-Γ=%.1e/" MODEL_DATA_DIR r Γ 
+    @info data_dir
+    mkpath(data_dir)
+
+    l = get_l(r)
+    @info "Model parameter (in GeV): " l, Γ
+
+    save_eom(l, Γ, data_dir)
+    PPs.save_all(num_k, data_dir, -2, 2)
+    # Boltzmann.save_all(num_k, data_dir, :quartic, 0, 2)
+end
+
 function save_all_spec()
     r_array = [0.0045] 
     # Γ_array = [1e-10, 1e-11, 1e-12]
@@ -73,17 +86,7 @@ function save_all_spec()
 
     for r in r_array 
         for Γ in Γ_array
-            data_dir = @sprintf "%sr=%.1e-Γ=%.1e/" MODEL_DATA_DIR r Γ 
-            @info data_dir
-            mkpath(data_dir)
-
-            l = get_l(r)
-            @info "Model parameter (in GeV): " l, Γ
-
-            save_eom(l, Γ, data_dir)
-            # PPs.save_all(num_k, data_dir, -2, 2)
-            Boltzmann.save_all(num_k, data_dir, :quartic, 0, 2)
-
+            save_single(l, Γ, num_k) 
             @printf "==============================I am a separator===================================\n"
         end
     end
