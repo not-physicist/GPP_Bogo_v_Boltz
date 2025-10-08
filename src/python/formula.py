@@ -8,7 +8,9 @@ import numpy as np
 #####################################################################
 
 def get_T_rh(Γ):
-    return 1.41 * gStar**(-1/4) * Γ**(1/2)
+    T = 1.41 * gStar**(-1/4) * Γ**(1/2)
+    # print(T)
+    return T
 
 def get_f(k, a_e_rh, H_e, Γ):
     """
@@ -24,10 +26,10 @@ def get_f(k, a_e_rh, H_e, Γ):
 def get_Ω_gw0(ρ, a_e_rh, H_e, Γ):
     """
     calculate current GW energy parameter
-    ρ = a^4 ρ / a_e^4 H_e^4
+    ρ = a0^4 ρ / a_e^4 H_e^4
     """
     # return 3.83e-14 * ρ * a_e_rh**4 * H_e**4 * Γ**(-2)
-    return 4.54e5 * ρ * a_e_rh**4 * (H_e/get_T_rh(Γ))**4
+    return 0.37 * ρ * a_e_rh**4 * (H_e/get_T_rh(Γ))**4
 
 #####################################################################
 

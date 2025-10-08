@@ -177,11 +177,13 @@ function save_all(num_k, data_dir, log_k_i = 0, log_k_f = 2)
     # @info "Maximum of a''/a/(a_e H_e)^2" maximum(eom.app_a) / (eom.aₑ * eom.Hₑ)^2
     # @info "a''/a/k in: " maximum(eom.app_a)/k[1], maximum(eom.app_a)/k[end]
  
+    # n, ρ, err = @time solve_all_spec(k, eom)
+
     # "critical" comoving momenta: largest k with tachyonic instab.
     # in mpl unit
     k_c = 2*sqrt(maximum(eom.app_a))
     @info "k_c/a_e H_e = " k_c/(eom.aₑ * eom.Hₑ)
-   
+    
     n1, ρ1, err1 = @time solve_all_spec(k[k .<= k_c], eom)
     n2, ρ2, err2 = @time solve_all_spec_alpha(k[k .> k_c], eom)
     n = 2 .* [n1; n2]

@@ -90,7 +90,7 @@ function save_eom(ϕᵢ, r, Γ, n, data_dir::String)
     α = 3 * (n-2)/(n+2)
     p = (_V, _dV, Γ, α)
     # dtmax = 2*π/_m_eff(0.0) / 10000
-    dtmax = 1/(10*sqrt(get_λ(model))*2*sqrt(3)) / 100000
+    dtmax = 1/(10*sqrt(get_λ(model))*2*sqrt(3)) / 10000
     @show dtmax
     
     EOMs.save_all(u₀, tspan, p, data_dir, _m_eff, dtmax)

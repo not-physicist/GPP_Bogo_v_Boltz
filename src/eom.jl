@@ -66,7 +66,7 @@ end
 Friedmann equation, EOM of inflaton field 
 and radiation energy density
 
-In conformal time
+In 'conformal' time
 """
 function _get_f(u, p, t)
     ϕ = u[1]
@@ -124,9 +124,10 @@ function solve_eom(u₀::SVector{4, Float64},
     prob = ODEProblem(_get_f, u₀, tspan, (p[1], p[2], 0.0, p[4]))
     sol = solve(prob, Vern9(), isoutofdomain=_H_neg, reltol=1e-12, abstol=1e-12, callback=cb, dtmax=dtmax)
     
-    # callback: terminate at ρ_ϕ / ρ_tot = 1e-5
+    # callback: terminate at ρ_ϕ / ρ_tot = 1e-3
+    tol = 1e-3
     _Omega_ϕ(u) = _get_Omega_ϕ(u, p)
-    condition2(u, t, integrator) = ( _Omega_ϕ(u) <= 1e-5)
+    condition2(u, t, integrator) = ( _Omega_ϕ(u) <= tol)
     affect2!(integrator) = terminate!(integrator)
     cb2 = DiscreteCallback(condition2, affect2!)
     u₁ = SA[sol[1, end], sol[2, end], sol[3, end], sol[4, end]]
@@ -136,7 +137,7 @@ function solve_eom(u₀::SVector{4, Float64},
     # @show sol[3, 1]
     
     Ω_ϕ_end = _Omega_ϕ(sol2.u[end])
-    if Ω_ϕ_end >= 1e-5
+    if Ω_ϕ_end >= tol
         @warn "The EOM may not terminate properly. A longer simulation might be necessary! Ω_ϕ = %f" Ω_ϕ_end
     end
 
@@ -146,6 +147,7 @@ function solve_eom(u₀::SVector{4, Float64},
     a = vcat(sol[3, 1:end-1], sol2[3, :])
     ρ_r = vcat(sol[4, 1:end-1], sol2[4, :])
     a_e = sol[3, end-1]
+    @show size(η)
     
     return get_EOMData(η, ϕ, dϕ, a, ρ_r, p[1], p[3], p[4], a_e)
 end

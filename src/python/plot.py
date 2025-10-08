@@ -469,11 +469,41 @@ def plot_all_n():
     r = 0.01 
     Γ = 1e-9
     dirs = [f"../data/Chaotic{x}/r={r:.1e}-Γ={Γ:.1e}/" for x in [2, 4, 6]]
+    # dirs = [f"../data/TModel-n={x}/r={r:.1e}-Γ={Γ:.1e}/" for x in [2, 4, 6]]
     # print(dirs)
+
+    fig, ax = plt.subplots()
     for dn in dirs:
+        print(dn)
+        plot_back_single(dn)
+        plot_spec_single(dn)
+
         fn = join(dn, "eom.npz")
         data = np.load(fn)
-        print(data["H_e"])
+        H_e = data["H_e"]
+        print("He = ", H_e)
+        a_e = data["a_e"]
+        a_rh = data["a_rh"]
+        print("a_e/a_rh = ", a_e/a_rh)
+
+        fn = join(dn, "spec_bogo.npz")
+        data = np.load(fn)
+        k = data["k"]
+        ρ = data["rho"]
+
+        f = formula.get_f(k, a_e/a_rh, H_e, Γ)
+        Ω = formula.get_Ω_gw0(ρ, a_e/a_rh, H_e, Γ)
+    
+        n = dn.split("/")[2][-1]
+        ax.plot(f, Ω, label=f"$n={n}$")
+    
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.set_xlabel(r"$f/Hz$")
+    ax.set_ylabel(r"$\Omega h^2$")
+    plt.legend()
+    plt.savefig("../figs/Omega_all_n.pdf", bbox_inches="tight")
+    plt.close()
 
 
 if __name__ == "__main__":
@@ -485,8 +515,8 @@ if __name__ == "__main__":
     # check_H("../data/Chaotic2/m=1.0e-05-Γ=1.0e-06/")
 
     # plot_all("../data/TModel-n=2/")
-    # plot_back_single("../data/TModel-n=6/r=1.0e-02-Γ=1.0e-10/")
-    # plot_spec_single("../data/TModel-n=2/r=1.0e-02-Γ=1.0e-07/")
+    plot_back_single("../data/TModel-n=4/r=1.0e-02-Γ=1.0e-08/")
+    plot_spec_single("../data/TModel-n=4/r=1.0e-02-Γ=1.0e-08/")
 
     # plot_comp_chaotic_tmodel()
     # check_H("../data/TModel-n=2/r=4.5e-03-Γ=1.0e-06/")
@@ -507,4 +537,4 @@ if __name__ == "__main__":
     # plot_back_single("../data/Chaotic6/r=4.5e-03-Γ=1.0e-10")
     # plot_all("../data/Chaotic6/"
 
-    plot_all_n()
+    # plot_all_n()
