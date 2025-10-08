@@ -43,8 +43,8 @@ end
 get parameters for (Taylored) monomial potential 
 """
 function get_λ(model)
-    @show model.α
-    return model.V₀ / ((6*model.α)^(model.n))
+    # @show model.α
+    return model.V₀ / ((6*model.α)^(model.n/2))
 end
 
 #=
@@ -70,7 +70,7 @@ init_time_mul: initial (conformal) time multiplicant; needs to make the simulati
 function save_eom(ϕᵢ, r, Γ, n, data_dir::String)
     # mkpath(data_dir)
 
-    model = TModels(n, 0.965, r, ϕᵢ)
+    model = TModels(n, 0.974, r, ϕᵢ)
     # @info Commons.dump_struct(model)
     # @info data_dir
     save_model_data(model, data_dir * "model.dat")
@@ -89,7 +89,9 @@ function save_eom(ϕᵢ, r, Γ, n, data_dir::String)
     _m_eff(x) = get_m_eff(x, model)
     α = 3 * (n-2)/(n+2)
     p = (_V, _dV, Γ, α)
-    dtmax = 2*π/_m_eff(0.0) / 100
+    # dtmax = 2*π/_m_eff(0.0) / 10000
+    dtmax = 1/(10*sqrt(get_λ(model))*2*sqrt(3)) / 100000
+    @show dtmax
     
     EOMs.save_all(u₀, tspan, p, data_dir, _m_eff, dtmax)
 
@@ -107,7 +109,9 @@ function save_single(ϕᵢ, r, Γ, n, num_k)
     @info "Model parameter (in GeV): " r, Γ
 
     save_eom(ϕᵢ, r, Γ, n, data_dir)
-    PPs.save_all(num_k, data_dir)
+    if !isnothing(num_k)
+        PPs.save_all(num_k, data_dir, -2, 2)
+    end
     # Boltzmann.save_all(num_k, data_dir)
 end
 
