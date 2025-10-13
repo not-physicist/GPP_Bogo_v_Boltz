@@ -78,6 +78,7 @@ function _get_f(u, p, t)
     get_dV = p[2]
     Γ = p[3]
     α = p[4]
+    ω = α/3
 
     ρ_ϕ = get_ρ_ϕ(ϕ, dϕ, a, get_V, α)
     # conformal Hubble
@@ -86,8 +87,9 @@ function _get_f(u, p, t)
     return SA[dϕ, 
              -((3-α)*H + a^(α)*Γ)*dϕ - a^(2*α) * get_dV(ϕ), 
               a*H, 
-              -4*H*ρ_r + a^(α)*Γ*ρ_ϕ]
+              -4*H*ρ_r + a^(α)*(1+ω)*Γ*ρ_ϕ]
 end
+# BUG: wrong equation, need (1+w) for the last one
 
 """
 function for isoutofdomain
@@ -178,9 +180,9 @@ function get_EOMData(η, ϕ, dϕ, a, ρ_r, V, Γ, α, a_e)
     Ω_ϕ = @. ρ_ϕ/(3*H^2)
 
     H_e = interpolate(a, H, a_e)
-    # @show a_e, H_e, log(a_e)
+    # @info a_e, H_e, log(a_e)
 
-    dec_index = findfirst(x -> x <= Γ, H)
+    dec_index = findfirst(x -> x <= 2/3*Γ, H)
     # a_rh = a[dec_index]
     a_rh = try
         # reheating scale factor
@@ -189,6 +191,8 @@ function get_EOMData(η, ϕ, dϕ, a, ρ_r, V, Γ, α, a_e)
         @warn "Scalar factor at reheating not found! %f"
         a[end]
     end
+
+    @info "a_rh / a_e = " a_rh/a_e
     
     w = @. get_eos(ϕ, dϕ, a, V, ρ_r, α)
     V = @. V(ϕ)

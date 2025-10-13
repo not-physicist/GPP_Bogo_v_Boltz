@@ -89,8 +89,11 @@ function save_eom(ϕᵢ, r, Γ, n, data_dir::String)
     _m_eff(x) = get_m_eff(x, model)
     α = 3 * (n-2)/(n+2)
     p = (_V, _dV, Γ, α)
-    # dtmax = 2*π/_m_eff(0.0) / 10000
-    dtmax = 1/(10*sqrt(get_λ(model))*2*sqrt(3)) / 10000
+    if n == 2 
+        dtmax = 1/get_m_eff(0.0, model)/200
+    elseif n == 4 || n == 6
+        dtmax = 1/(10*sqrt(get_λ(model))*2*sqrt(3)) / 20000
+    end
     @show dtmax
     
     EOMs.save_all(u₀, tspan, p, data_dir, _m_eff, dtmax)
@@ -102,7 +105,7 @@ end
 # save_eom_benchmark() = save_eom(3.6, 0.0045, 1e-7, 2)
 # save_f_benchmark() = PPs.save_all(100, MODEL_DATA_DIR*"0.0045/")
 
-function save_single(ϕᵢ, r, Γ, n, num_k)
+function save_single(ϕᵢ, r, Γ, n, num_k, k_min=-2, k_max=2)
     data_dir = @sprintf "%s-n=%i/r=%.1e-Γ=%.1e/" MODEL_DATA_DIR n r Γ
     @info data_dir
     mkpath(data_dir)
@@ -110,7 +113,7 @@ function save_single(ϕᵢ, r, Γ, n, num_k)
 
     save_eom(ϕᵢ, r, Γ, n, data_dir)
     if !isnothing(num_k)
-        PPs.save_all(num_k, data_dir, -2, 2)
+        PPs.save_all(num_k, data_dir, k_min, k_max)
     end
     # Boltzmann.save_all(num_k, data_dir)
 end
