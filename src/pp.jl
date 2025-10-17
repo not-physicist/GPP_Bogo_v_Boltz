@@ -171,14 +171,6 @@ function save_all(num_k, data_dir, log_k_i = 0, log_k_f = 2)
 
     k = @. logspace(log_k_i, log_k_f, num_k) * eom.aₑ * eom.Hₑ
 
-    # k = @. [1.5] * a_e * H_e
-    # @info "Comoving momentum k's range: " k[1], k[end]
-    # @info eom.aₑ eom.Hₑ 
-    # @info "Maximum of a''/a/(a_e H_e)^2" maximum(eom.app_a) / (eom.aₑ * eom.Hₑ)^2
-    # @info "a''/a/k in: " maximum(eom.app_a)/k[1], maximum(eom.app_a)/k[end]
- 
-    # n, ρ, err = @time solve_all_spec(k, eom)
-
     # "critical" comoving momenta: largest k with tachyonic instab.
     # in mpl unit
     k_c = 2*sqrt(maximum(eom.app_a))
@@ -186,9 +178,10 @@ function save_all(num_k, data_dir, log_k_i = 0, log_k_f = 2)
     
     n1, ρ1, err1 = @time solve_all_spec(k[k .<= k_c], eom)
     n2, ρ2, err2 = @time solve_all_spec_alpha(k[k .> k_c], eom)
-    n = 2 .* [n1; n2]
-    ρ = 2 .* [ρ1; ρ2]
+    n = [n1; n2]
+    ρ = [ρ1; ρ2]
     err = [err1; err2]
+    # BUG: without the factor 2, this gives spectrum thats 1/2 of the analytical results
     # @info size(n) size(ρ) size(err)
     # @info log.(n)
     # @info size(f_boltz)

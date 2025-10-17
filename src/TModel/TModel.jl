@@ -115,7 +115,7 @@ function save_single(ϕᵢ, r, Γ, n, num_k, k_min=-2, k_max=2)
     if !isnothing(num_k)
         PPs.save_all(num_k, data_dir, k_min, k_max)
     end
-    # Boltzmann.save_all(num_k, data_dir)
+    Boltzmann.save_all(num_k, data_dir, :quadratic)
 end
 
 function save_all_spec()

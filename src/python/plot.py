@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from matplotlib import colormaps
 import numpy as np
 from scipy.ndimage import gaussian_filter1d
+from scipy.optimize import curve_fit
 
 from os import listdir 
 from os.path import join
@@ -44,6 +45,7 @@ def plot_back_single(dn):
     a_rh = data["a_rh"]
     H_e = data["H_e"]
     N_e = np.log(a_e)
+    print("a_rh/a_e = ", a_rh / a_e)
 
     fig, (ax1, ax2) = plt.subplots(ncols=2)
 
@@ -157,6 +159,30 @@ def plot_spec_single(dn):
     ax.plot(k, ρ, label=r"$\rho_k$")
     ax.plot(k, error, label="error")
 
+
+    """
+    get power index for the IR end (if exists)
+    """
+    if k[0] <= 5e-2:
+        k_to_fit = k[k <= 0.05]
+        ρ_to_fit = ρ[k <= 0.05]
+        # print(k_to_fit, ρ_to_fit)
+
+        popt, pcov = curve_fit(lambda x, a, b: a*x + b, np.log(k_to_fit), np.log(ρ_to_fit))
+        # print(popt, pcov)
+        perr = np.sqrt(np.diag(pcov))
+        print(f"The IR end of the energy spectrum has the power: {popt[0]} +- {perr[0]}")
+        plt.plot(k, k**(popt[0])*np.exp(popt[1]), label=rf"$\propto k^{{ {popt[0]:.2f} }}$", ls="-.", color="gray")
+
+        k_to_fit = k[(k >= 0.2) & (k <= 0.7)]
+        ρ_to_fit = ρ[(k >= 0.2) & (k <= 0.7)]
+        # print(k_to_fit, ρ_to_fit)
+
+        popt, pcov = curve_fit(lambda x, a, b: a*x + b, np.log(k_to_fit), np.log(ρ_to_fit))
+        # print(popt, pcov)
+        perr = np.sqrt(np.diag(pcov))
+        print(f"The near-IR end of the energy spectrum has the power: {popt[0]} +- {perr[0]}")
+
     ax.set_xlabel("$k/a_e H_e$")
     ax.set_xscale("log")
     ax.set_yscale("log")
@@ -169,6 +195,7 @@ def plot_spec_single(dn):
     fig_fn = join(out_dn, "specs.pdf")
     fig.savefig(fig_fn, bbox_inches="tight")
     plt.close(fig=fig)
+
 
 def draw_spec(dn, AX, AX2, label_pref, m_phi, Γ, c, ls):
     # print(dn, label)
@@ -202,7 +229,7 @@ def draw_spec(dn, AX, AX2, label_pref, m_phi, Γ, c, ls):
         f_exact_boltz = formula.get_f_exact_boltz(k, a, ρ_ϕ, H, m_phi, a_e, H_e)
     '''
 
-    # AX.plot(k, formula.get_f_ana(k, H_e, m_phi, Γ), color="tab:cyan", label="approx. Boltz.")
+    AX.plot(k, formula.get_f_ana(k, H_e, m_phi, Γ), color="tab:cyan", label="approx. Boltz.")
     AX.plot(k, n, ls=ls, color="k", label=label_pref+"Bogo.", alpha=0.5)
  
     try:
@@ -509,14 +536,18 @@ def plot_all_n():
 if __name__ == "__main__":
     # plot_back_single("../data/Chaotic2/test")
     # plot_spec_single("../data/Chaotic2/test")
-    # plot_all("../data/Chaotic2/")
+    plot_all("../data/Chaotic2/")
 
     # check_H("../data/Chaotic2/m=1.0e-04-Γ=1.0e-07/")
     # check_H("../data/Chaotic2/m=1.0e-05-Γ=1.0e-06/")
 
     # plot_all("../data/TModel-n=2/")
-    plot_back_single("../data/TModel-n=4/r=1.0e-02-Γ=1.0e-08/")
-    plot_spec_single("../data/TModel-n=4/r=1.0e-02-Γ=1.0e-08/")
+    # plot_back_single("../data/TModel-n=2/r=1.0e-02-Γ=1.0e-07/")
+    # plot_spec_single("../data/TModel-n=2/r=1.0e-02-Γ=1.0e-07/")
+    # plot_back_single("../data/TModel-n=6/r=1.0e-02-Γ=1.0e-10/")
+    # plot_spec_single("../data/TModel-n=6/r=1.0e-02-Γ=1.0e-10/")
+    # plot_back_single("../data/TModel-n=6/r=1.0e-02-Γ=1.0e-08/")
+    # plot_spec_single("../data/TModel-n=6/r=1.0e-02-Γ=1.0e-08/")
 
     # plot_comp_chaotic_tmodel()
     # check_H("../data/TModel-n=2/r=4.5e-03-Γ=1.0e-06/")
