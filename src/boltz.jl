@@ -3,6 +3,8 @@ module to compute exact Boltzmann result
 """
 module Boltzmann
 
+using CurveFit
+
 using CubicSplines: extrapolate
 using ..Commons
 
@@ -54,7 +56,7 @@ function get_four_coeff(num_j, t, V_ρ)
     # Remove last few oscillations
     # indices = indices[1:20]
     # N = size(indices)[1] - 1
-    @show diff(indices)
+    # @show diff(indices)
     if any(x -> x < num_j, diff(indices))
         @warn "Number of points in one period could be lower than num_j; Fourier series should not be trusted in this case!" diff(indices) num_j
     end
@@ -70,13 +72,31 @@ function get_four_coeff(num_j, t, V_ρ)
         t_osci = t[i1:i2] .- t[i1]
         V_osci = (V_ρ)[i1:i2]
         P = t_osci[end] - t_osci[1]
-        # @show P
         tmp = [_get_c_n(t_osci, V_osci, P, j) for j in 1:num_j]
         ωj[i, :] = [x[1] for x in tmp]
         c_n[i, :] = [x[2] for x in tmp]
     end
-    return N, indices, ωj, c_n
+    # @info "ω = " ωj[:, 1]
+    ωpω2 = diff(ωj[:, 1]) ./ diff(t[indices[1:end-1]]) ./ (ωj[1:end-1, 1] .^ 2)
+    # @info "ω'/ω^2 = " 
+    # display(ωpω2)
+    # @info "How many steps within one oscillation" diff(indices)
+    return N, indices, ωj, c_n, ωpω2
 end
+
+#=
+"""
+correction factor due to time-dependent period
+k = k/a_e H_e 
+j: which Fourier mode 
+aH = a_e H_e / a H 
+mpm2 = m'/m^2
+"""
+function _get_C(k::Real, j::Int, aH::Real, mpm2::Real)
+    return 1/abs(1 + 1/j * k * aH * mpm2)
+end
+=#
+
 
 """
 compute the Boltzmann phase space distribution
@@ -96,11 +116,11 @@ function get_f(eom, k::Vector, model::Symbol)
     #=
     Process the eom arrays first
     apply mask to focus after end of inflation
-    interpolate the input, better fourier series
+
+    interpolation does nothing, don;t want to change now
     =#
-    # @show eom.t[1], (eom.t[eom.a .>= eom.aₑ])[1]*1e-5/π
-    # a_mask = eom.a .>= eom.aₑ
-    a_mask = eom.a .>= eom.aₑ/5
+    # a_mask = eom.a .>= eom.aₑ/5
+    a_mask = eom.a .>= eom.aₑ
     # t_new, V_new = @time _get_dense(eom.t[a_mask], eom.V[a_mask])
     t_new = eom.t[a_mask]
     V_new = eom.V[a_mask]
@@ -109,12 +129,29 @@ function get_f(eom, k::Vector, model::Symbol)
     ρ_ϕ = @. eom.Ω_ϕ * 3 * eom.H^2
     ρ_new = Interpolate(eom.t[a_mask], ρ_ϕ[a_mask]).(t_new)
     # @show a_new[1], H_new[1]
+    # @info "a_e H_e / a H =" eom.aₑ * H_new[1] ./ (H_new .* a_new) 
     
-    N, indices, ωj, c_n = @time get_four_coeff(num_j, t_new, V_new ./ ρ_new)
-    # show (j=1) ω for different times
-    # @show ωj[1:end, 1]
-    # @show log.(abs.(c_n[1, :]))
-    # @show log.(abs.(c_n[end, :]))
+    N, indices, ωj, c_n, ωpω2 = @time get_four_coeff(num_j, t_new, V_new ./ ρ_new)
+    # @show size(indices) size(ωj) size(ωpω2)
+    
+    # Correction factor with j = 1 for now
+    # k = a ω 
+    # k_new = a_new[indices[1:end-1]] .* ωj[:, 1] / eom.aₑ / H_new[1]
+    # @show k_new
+    # @info size(k)
+    # C = @. 1/abs(1 + k_new[1:end-1] * eom.aₑ * H_new[1] / (a_new * H_new)[indices[1:end-2]] * ωpω2)
+    # @info "Correction factor with j=1: " 
+    # display(C)
+    # C = @. 1/abs(1 + 1/10 * k_new[1:end-1] * eom.aₑ * H_new[1] / (a_new * H_new)[indices[1:end-2]] * ωpω2)
+    # @info "Correction factor with j=10: " 
+    # display(C)
+    
+    # do a curve fir of ω(a) of first 10 elements
+    # @info "a * ωj = " a_new[indices[1:end-1]] .* ωj[:, 1]
+    # fitf = curve_fit(PowerFit, a_new[indices[1:5]], ωj[1:5, 1])
+    # @show fitf
+    # @show ωj[:, 1]
+    # @show fitf.(a_new[indices])
     
     #=
     Now compute the spectrum
@@ -128,28 +165,34 @@ function get_f(eom, k::Vector, model::Symbol)
         # iterate over j (different fourier modes)
         n2_H = zeros(N)
         Threads.@threads for i in 1:N
-            n2_H[i] = 4*π/ωj[i, j]^3 * ρ_new[indices[i]]^2 * abs2(c_n[i, j]) / H_new[indices[i]]
+            # the ωj = 2 m j are the total energy for both gravitons
+            n2_H[i] = 2*π/ωj[i, j]^3 * ρ_new[indices[i]]^2 * abs2(c_n[i, j]) / H_new[indices[i]]
         end
         
         # to be interpolated as k/a_e H_e
+        # the ωj = 2 m j are the total energy for both gravitons
         X = a_new[indices[1:end-1]] .* ωj[:, j] ./ 2 / a_new[1] / H_new[1]
-        # if j == 1
-        #     @show X
-        # end
-        # indices for the sorted array
-        Y = n2_H
-        # @info X[1:argmax(X)] X[argmax(X):end]
-        # @info X[1]
+
+        # correction factor 
+        C = @. 1/abs(1 + 1/j * X[1:end-1] * eom.aₑ * H_new[1] / (a_new * H_new)[indices[1:end-2]] * (ωpω2 * 2*j))
+        if j == 1
+            @info "Correction factor:"
+            display(X)
+            display(C)
+        end
+
+        Y = n2_H[1:end-1] .* C
+
         if model == :quadratic
-            n2_H_dense = Interpolate(X, Y, extrapolate=LinearInterpolations.Constant(0.0)).(k)
+            n2_H_dense = Interpolate(X[1:end-1], Y, extrapolate=LinearInterpolations.Constant(0.0)).(k)
             f += n2_H_dense
         elseif model == :quartic
             n2_H_dense = Interpolate(X[1:argmax(X)], Y[1:argmax(X)], extrapolate=LinearInterpolations.Constant(0.0)).(k)
             f += n2_H_dense
-            f += Interpolate(X[end:-1:argmax(X)], Y[end:-1:argmax(X)], extrapolate=LinearInterpolations.Constant(0.0)).(k)
+            f += Interpolate(X[end-1:-1:argmax(X)], Y[end:-1:argmax(X)], extrapolate=LinearInterpolations.Constant(0.0)).(k)
         elseif model == :sextic
-            sort_ind = sortperm(X)
-            f += Interpolate(X[sort_ind], Y[sort_ind], extrapolate=LinearInterpolations.Constant(0.0)).(k)
+            sort_ind = sortperm(X[1:end-1])
+            f += Interpolate((X[1:end-1])[sort_ind], Y[sort_ind], extrapolate=LinearInterpolations.Constant(0.0)).(k)
         else
             return ArgumentError("Model not implemented!")
         end
@@ -197,7 +240,7 @@ function save_all(num_k, data_dir, model, log_k_i=0, log_k_f=2)
     f = @time get_f(eom, k, model)
 
     # mkpath(data_dir)
-    @show k, f
+    # @show k, f
     npzwrite(data_dir * "spec_boltz.npz", Dict(
         "k" => k,
         "f" => f,

@@ -89,7 +89,6 @@ function _get_f(u, p, t)
               a*H, 
               -4*H*ρ_r + a^(α)*(1+ω)*Γ*ρ_ϕ]
 end
-# BUG: wrong equation, need (1+w) for the last one
 
 """
 function for isoutofdomain
@@ -124,7 +123,8 @@ function solve_eom(u₀::SVector{4, Float64},
     affect!(integrator) = terminate!(integrator)
     cb = DiscreteCallback(condition, affect!)
     prob = ODEProblem(_get_f, u₀, tspan, (p[1], p[2], 0.0, p[4]))
-    sol = solve(prob, Vern9(), isoutofdomain=_H_neg, reltol=1e-12, abstol=1e-12, callback=cb, dtmax=dtmax)
+    sol = solve(prob, Vern9(), isoutofdomain=_H_neg, reltol=1e-15, abstol=1e-15, callback=cb, dtmax=dtmax)
+    # sol = solve(prob, RK4(), isoutofdomain=_H_neg, reltol=1e-9, abstol=1e-9, callback=cb, dtmax=dtmax)
     
     # callback: terminate at ρ_ϕ / ρ_tot = 1e-3
     tol = 1e-3
@@ -135,7 +135,8 @@ function solve_eom(u₀::SVector{4, Float64},
     u₁ = SA[sol[1, end], sol[2, end], sol[3, end], sol[4, end]]
     tspan2 = (sol.t[end], tspan[2])
     prob = ODEProblem(_get_f, u₁, tspan2, p)
-    sol2 = solve(prob, Vern9(), isoutofdomain=_H_neg, reltol=1e-12, abstol=1e-12, callback=cb2, dtmax=dtmax, save_start=false)
+    # sol2 = solve(prob, Vern9(), isoutofdomain=_H_neg, reltol=1e-15, abstol=1e-15, callback=cb2, dtmax=dtmax, save_start=false)
+    sol2 = solve(prob, RK4(), isoutofdomain=_H_neg, reltol=1e-12, abstol=1e-12, callback=cb2, dtmax=dtmax, save_start=false)
     # @show sol[3, 1]
     
     Ω_ϕ_end = _Omega_ϕ(sol2.u[end])
@@ -149,7 +150,8 @@ function solve_eom(u₀::SVector{4, Float64},
     a = vcat(sol[3, 1:end-1], sol2[3, :])
     ρ_r = vcat(sol[4, 1:end-1], sol2[4, :])
     a_e = sol[3, end-1]
-    @show size(η)
+    @info "Numer of steps in inflation" size(sol.t)[1]
+    @info "Number of steps" size(η)[1]
     
     return get_EOMData(η, ϕ, dϕ, a, ρ_r, p[1], p[3], p[4], a_e)
 end
