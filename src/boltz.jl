@@ -3,12 +3,13 @@ module to compute exact Boltzmann result
 """
 module Boltzmann
 
-using CurveFit
 
-using CubicSplines: extrapolate
+# using CubicSplines: extrapolate
 using ..Commons
 
-using CubicSplines, LinearInterpolations, NumericalIntegration, Peaks, Statistics, Serialization, NPZ, QuadGK
+using LinearInterpolations, NumericalIntegration, Peaks, Statistics, Serialization, NPZ, QuadGK
+using BSplineKit 
+using CurveFit
 
 #=
 """
@@ -26,44 +27,35 @@ end
 """
 get (complex) a single fourier coefficient using the integral formula
 assume the input is exactly one period
+
+only returns absolute value of Fourier coefficient
 """
-function _get_c_n(x, y, P, n::Int)
+function _get_c_n(x_min, x_max, y_itp, n::Int)
+    # the period of V is always half of the oscillation frequency m
+    P = x_max - x_min
     ω = 2*π*n/P
     
-    y_itp = CubicSpline(x, y)
-    # y_itp = Interpolate(x, y)
-    res = quadgk(k -> y_itp(k)*exp(-1.0im*ω*k)/P, x[1], x[end])
+    res = quadgk(k -> y_itp(k)*exp(-1.0im*ω*k)/P, x_min, x_max)
     # @show res
-    return ω, res[1]
+    return abs(res[1])
 end
 
 """
     Get Fourier series for each oscillation
     separate arrays for frequencies and four. coeffcients 
-    two-dimensional: time and multiples of fundamental frequency
+    c_n: two-d array, one for which oscillation, one for which fourier mode
 """
 function get_four_coeff(num_j, t, V_ρ)
     # use minima, start from first minima
     indices = argminima(V_ρ)
     N = size(indices)[1] - 1
     
-    # use maxima, start from end of inflation already
-    # indices = argmaxima(V_ρ)
-    # N = size(indices)[1]
-    # pushfirst!(indices, 1)
-
-    # @show N
-    # Remove last few oscillations
-    # indices = indices[1:20]
-    # N = size(indices)[1] - 1
-    # @show diff(indices)
     if any(x -> x < num_j, diff(indices))
         @warn "Number of points in one period could be lower than num_j; Fourier series should not be trusted in this case!" diff(indices) num_j
     end
-    # @show V_ρ[indices]
 
-    ωj = zeros(Float64, (N, num_j))
-    c_n = zeros(ComplexF64, (N, num_j))
+    m_tilde = zeros(Float64, (N,))
+    c_n = zeros(Float64, (N, num_j))
     Threads.@threads for i in 1:N 
         i1 = indices[i]
         i2 = indices[i+1]
@@ -71,32 +63,49 @@ function get_four_coeff(num_j, t, V_ρ)
         # get t and (normalized) V for a single oscillation
         t_osci = t[i1:i2] .- t[i1]
         V_osci = (V_ρ)[i1:i2]
-        P = t_osci[end] - t_osci[1]
-        tmp = [_get_c_n(t_osci, V_osci, P, j) for j in 1:num_j]
-        ωj[i, :] = [x[1] for x in tmp]
-        c_n[i, :] = [x[2] for x in tmp]
+        # P = t_osci[end] - t_osci[1]
+        y_itp = BSplineKit.interpolate(t_osci, V_osci, BSplineOrder(4))
+        c_n[i, :] = [_get_c_n(t_osci[1], t_osci[end], y_itp, j) for j in 1:num_j]
+        m_tilde[i] = π / (t_osci[end] - t_osci[1])
+        
+        #=
+        # check the spline order 
+        if i == 1
+            x_int = range(t_osci[1], t_osci[end], length=size(t_osci)[1]*10)
+            y_int = y_itp.(x_int)
+            npzwrite("data/check_osci_spline_order.npz", Dict(
+                "x" => t_osci,
+                "y" => V_osci,
+                "x_int" => x_int,
+                "y_int" => y_int,
+            ))
+        end
+        # Looks good!
+        =#
     end
-    # @info "ω = " ωj[:, 1]
-    ωpω2 = diff(ωj[:, 1]) ./ diff(t[indices[1:end-1]]) ./ (ωj[1:end-1, 1] .^ 2)
-    # @info "ω'/ω^2 = " 
-    # display(ωpω2)
-    # @info "How many steps within one oscillation" diff(indices)
-    return N, indices, ωj, c_n, ωpω2
-end
+    # Use spline to get interpolation of derivative correctly
+    # see: https://discourse.julialang.org/t/best-way-to-take-derivatives-of-unevenly-spaced-data-with-interpolations-discrete-derivatives/54097/6
+    y_int = BSplineKit.interpolate(t[indices[1:end-1]], m_tilde, BSplineOrder(4))
+    S = spline(y_int)
+    dS = diff(S, Derivative(1))
+    mpm2 = @. dS(t[indices[1:end-2]]) / m_tilde[1:end-1]^2
+    display(mpm2)
+    
+    #=
+    # check the spline order
+    x_int = range(t[indices[1]], t[indices[end-1]], length=(size(indices)[1] - 1)*10)
+    y_int = S.(x_int)
+    npzwrite("data/check_mpm2_spline_order.npz", Dict(
+        "x" => t[indices[1:end-1]],
+        "y" => m_tilde,
+        "x_int" => x_int,
+        "y_int" => y_int,
+    ))
+    # Looks good!
+    =#
 
-#=
-"""
-correction factor due to time-dependent period
-k = k/a_e H_e 
-j: which Fourier mode 
-aH = a_e H_e / a H 
-mpm2 = m'/m^2
-"""
-function _get_C(k::Real, j::Int, aH::Real, mpm2::Real)
-    return 1/abs(1 + 1/j * k * aH * mpm2)
+    return N, indices, m_tilde, c_n, mpm2
 end
-=#
-
 
 """
 compute the Boltzmann phase space distribution
@@ -131,27 +140,17 @@ function get_f(eom, k::Vector, model::Symbol)
     # @show a_new[1], H_new[1]
     # @info "a_e H_e / a H =" eom.aₑ * H_new[1] ./ (H_new .* a_new) 
     
-    N, indices, ωj, c_n, ωpω2 = @time get_four_coeff(num_j, t_new, V_new ./ ρ_new)
+    N, indices, m_tilde, c_n, mpm2 = @time get_four_coeff(num_j, t_new, V_new ./ ρ_new)
     # @show size(indices) size(ωj) size(ωpω2)
     
-    # Correction factor with j = 1 for now
-    # k = a ω 
-    # k_new = a_new[indices[1:end-1]] .* ωj[:, 1] / eom.aₑ / H_new[1]
-    # @show k_new
-    # @info size(k)
-    # C = @. 1/abs(1 + k_new[1:end-1] * eom.aₑ * H_new[1] / (a_new * H_new)[indices[1:end-2]] * ωpω2)
-    # @info "Correction factor with j=1: " 
-    # display(C)
-    # C = @. 1/abs(1 + 1/10 * k_new[1:end-1] * eom.aₑ * H_new[1] / (a_new * H_new)[indices[1:end-2]] * ωpω2)
-    # @info "Correction factor with j=10: " 
-    # display(C)
-    
+    #=
     # do a curve fir of ω(a) of first 10 elements
-    # @info "a * ωj = " a_new[indices[1:end-1]] .* ωj[:, 1]
-    # fitf = curve_fit(PowerFit, a_new[indices[1:5]], ωj[1:5, 1])
-    # @show fitf
-    # @show ωj[:, 1]
-    # @show fitf.(a_new[indices])
+    @info "a * ωj = " a_new[indices[1:end-1]] .* ωj[:, 1]
+    fitf = curve_fit(PowerFit, a_new[indices[1:5]], ωj[1:5, 1])
+    @show fitf
+    @show ωj[:, 1]
+    @show fitf.(a_new[indices])
+    =#
     
     #=
     Now compute the spectrum
@@ -165,21 +164,21 @@ function get_f(eom, k::Vector, model::Symbol)
         # iterate over j (different fourier modes)
         n2_H = zeros(N)
         Threads.@threads for i in 1:N
-            # the ωj = 2 m j are the total energy for both gravitons
-            n2_H[i] = 2*π/ωj[i, j]^3 * ρ_new[indices[i]]^2 * abs2(c_n[i, j]) / H_new[indices[i]]
+            n2_H[i] = π/4 / (m_tilde[i]*j)^3 * ρ_new[indices[i]]^2 * abs2(c_n[i, j]) / H_new[indices[i]]
         end
         
         # to be interpolated as k/a_e H_e
-        # the ωj = 2 m j are the total energy for both gravitons
-        X = a_new[indices[1:end-1]] .* ωj[:, j] ./ 2 / a_new[1] / H_new[1]
+        X = @. a_new[indices[1:end-1]] * m_tilde * j / a_new[1] / H_new[1]
 
         # correction factor 
-        C = @. 1/abs(1 + 1/j * X[1:end-1] * eom.aₑ * H_new[1] / (a_new * H_new)[indices[1:end-2]] * (ωpω2 * 2*j))
+        C = @. 1/abs(1 + 1/j * X[1:end-1] * eom.aₑ * H_new[1] / (a_new * H_new)[indices[1:end-2]] * (mpm2))
+        #=
         if j == 1
             @info "Correction factor:"
             display(X)
             display(C)
         end
+        =#
 
         Y = n2_H[1:end-1] .* C
 
@@ -198,19 +197,6 @@ function get_f(eom, k::Vector, model::Symbol)
         end
     end
     return f
-    
-    #=
-    # Second method: n=2 spectrum enhanced for whatever reason, n=4 alright
-    f = zeros(size(k))
-    for i in 1:N
-    # iterate over different oscillations
-        X = a_new[indices[i]] .* ωj[i, :] ./ 2 / eom.aₑ / eom.Hₑ
-        # @show X
-        # ~ n^2 / H
-        Y = [4*π/ωj[i, j]^3 * V_new[indices[i]]^2 * abs2(c_n[i, j]) / H_new[indices[i]] for j in 1:num_j]
-        f += Interpolate(X, Y, extrapolate=LinearInterpolations.Constant(0.0)).(k)
-    end
-    =#
     
     #=
     # To get uninterpolated spectrum
@@ -239,8 +225,6 @@ function save_all(num_k, data_dir, model, log_k_i=0, log_k_f=2)
     k = @. logspace(log_k_i, log_k_f, num_k)
     f = @time get_f(eom, k, model)
 
-    # mkpath(data_dir)
-    # @show k, f
     npzwrite(data_dir * "spec_boltz.npz", Dict(
         "k" => k,
         "f" => f,

@@ -10,10 +10,10 @@
 NotebookFileLineBreakTest
 NotebookFileLineBreakTest
 NotebookDataPosition[       158,          7]
-NotebookDataLength[     54471,       1359]
-NotebookOptionsPosition[     50808,       1294]
-NotebookOutlinePosition[     51198,       1310]
-CellTagsIndexPosition[     51155,       1307]
+NotebookDataLength[     59116,       1488]
+NotebookOptionsPosition[     55417,       1421]
+NotebookOutlinePosition[     55807,       1437]
+CellTagsIndexPosition[     55764,       1434]
 WindowFrame->Normal*)
 
 (* Beginning of Notebook Content *)
@@ -23,195 +23,7 @@ Cell[CellGroupData[{
 Cell[BoxData[
  RowBox[{"<<", "FeynCalc`"}]], "Input",
  CellChangeTimes->{{3.970197147062661*^9, 3.9701971496013203`*^9}},
- CellLabel->"In[21]:=",ExpressionUUID->"1bb96c98-9835-4fb2-85d7-76636b49480d"],
-
-Cell[BoxData[
- TemplateBox[{
-  "FCE", "shdw", 
-   "\"Symbol \\!\\(\\*RowBox[{\\\"\\\\\\\"FCE\\\\\\\"\\\"}]\\) appears in \
-multiple contexts \\!\\(\\*RowBox[{\\\"{\\\", RowBox[{\\\"\\\\\\\"FeynCalc`\\\
-\\\\\"\\\", \\\",\\\", \\\"\\\\\\\"Global`\\\\\\\"\\\"}], \\\"}\\\"}]\\); \
-definitions in context \
-\\!\\(\\*RowBox[{\\\"\\\\\\\"FeynCalc`\\\\\\\"\\\"}]\\) may shadow or be \
-shadowed by other definitions.\"", 2, 21, 1, 30246309700212855970, "Local", 
-   "FeynCalc`FCE"},
-  "MessageTemplate2",
-  BaseStyle->"MSG"]], "Message",
- CellChangeTimes->{3.970295775183271*^9},
- CellLabel->
-  "During evaluation of \
-In[21]:=",ExpressionUUID->"446a3868-3227-412f-be9a-d441e2fcfaca"],
-
-Cell[BoxData[
- TemplateBox[{
-  "ExplicitLorentzIndex", "shdw", 
-   "\"Symbol \
-\\!\\(\\*RowBox[{\\\"\\\\\\\"ExplicitLorentzIndex\\\\\\\"\\\"}]\\) appears in \
-multiple contexts \\!\\(\\*RowBox[{\\\"{\\\", RowBox[{\\\"\\\\\\\"FeynCalc`\\\
-\\\\\"\\\", \\\",\\\", \\\"\\\\\\\"Global`\\\\\\\"\\\"}], \\\"}\\\"}]\\); \
-definitions in context \
-\\!\\(\\*RowBox[{\\\"\\\\\\\"FeynCalc`\\\\\\\"\\\"}]\\) may shadow or be \
-shadowed by other definitions.\"", 2, 21, 2, 30246309700212855970, "Local", 
-   "FeynCalc`ExplicitLorentzIndex"},
-  "MessageTemplate2",
-  BaseStyle->"MSG"]], "Message",
- CellChangeTimes->{3.970295775412528*^9},
- CellLabel->
-  "During evaluation of \
-In[21]:=",ExpressionUUID->"414adbb4-7fe6-49ab-9d28-2f4a2f52c44c"],
-
-Cell[BoxData[
- TemplateBox[{
-  "FV", "shdw", 
-   "\"Symbol \\!\\(\\*RowBox[{\\\"\\\\\\\"FV\\\\\\\"\\\"}]\\) appears in \
-multiple contexts \\!\\(\\*RowBox[{\\\"{\\\", RowBox[{\\\"\\\\\\\"FeynCalc`\\\
-\\\\\"\\\", \\\",\\\", \\\"\\\\\\\"Global`\\\\\\\"\\\"}], \\\"}\\\"}]\\); \
-definitions in context \
-\\!\\(\\*RowBox[{\\\"\\\\\\\"FeynCalc`\\\\\\\"\\\"}]\\) may shadow or be \
-shadowed by other definitions.\"", 2, 21, 3, 30246309700212855970, "Local", 
-   "FeynCalc`FV"},
-  "MessageTemplate2",
-  BaseStyle->"MSG"]], "Message",
- CellChangeTimes->{3.97029577542242*^9},
- CellLabel->
-  "During evaluation of \
-In[21]:=",ExpressionUUID->"bba6c6e5-042e-442c-ac66-5a8bea6cbee0"],
-
-Cell[BoxData[
- TemplateBox[{
-  "FVD", "shdw", 
-   "\"Symbol \\!\\(\\*RowBox[{\\\"\\\\\\\"FVD\\\\\\\"\\\"}]\\) appears in \
-multiple contexts \\!\\(\\*RowBox[{\\\"{\\\", RowBox[{\\\"\\\\\\\"FeynCalc`\\\
-\\\\\"\\\", \\\",\\\", \\\"\\\\\\\"Global`\\\\\\\"\\\"}], \\\"}\\\"}]\\); \
-definitions in context \
-\\!\\(\\*RowBox[{\\\"\\\\\\\"FeynCalc`\\\\\\\"\\\"}]\\) may shadow or be \
-shadowed by other definitions.\"", 2, 21, 4, 30246309700212855970, "Local", 
-   "FeynCalc`FVD"},
-  "MessageTemplate2",
-  BaseStyle->"MSG"]], "Message",
- CellChangeTimes->{3.970295775433031*^9},
- CellLabel->
-  "During evaluation of \
-In[21]:=",ExpressionUUID->"0c718c65-9402-43f6-8f08-cd9d3821f221"],
-
-Cell[BoxData[
- TemplateBox[{
-  "MT", "shdw", 
-   "\"Symbol \\!\\(\\*RowBox[{\\\"\\\\\\\"MT\\\\\\\"\\\"}]\\) appears in \
-multiple contexts \\!\\(\\*RowBox[{\\\"{\\\", RowBox[{\\\"\\\\\\\"FeynCalc`\\\
-\\\\\"\\\", \\\",\\\", \\\"\\\\\\\"Global`\\\\\\\"\\\"}], \\\"}\\\"}]\\); \
-definitions in context \
-\\!\\(\\*RowBox[{\\\"\\\\\\\"FeynCalc`\\\\\\\"\\\"}]\\) may shadow or be \
-shadowed by other definitions.\"", 2, 21, 5, 30246309700212855970, "Local", 
-   "FeynCalc`MT"},
-  "MessageTemplate2",
-  BaseStyle->"MSG"]], "Message",
- CellChangeTimes->{3.9702957754435177`*^9},
- CellLabel->
-  "During evaluation of \
-In[21]:=",ExpressionUUID->"8978970d-7f12-4fa2-9c5e-51845731dae6"],
-
-Cell[BoxData[
- TemplateBox[{
-  "MTD", "shdw", 
-   "\"Symbol \\!\\(\\*RowBox[{\\\"\\\\\\\"MTD\\\\\\\"\\\"}]\\) appears in \
-multiple contexts \\!\\(\\*RowBox[{\\\"{\\\", RowBox[{\\\"\\\\\\\"FeynCalc`\\\
-\\\\\"\\\", \\\",\\\", \\\"\\\\\\\"Global`\\\\\\\"\\\"}], \\\"}\\\"}]\\); \
-definitions in context \
-\\!\\(\\*RowBox[{\\\"\\\\\\\"FeynCalc`\\\\\\\"\\\"}]\\) may shadow or be \
-shadowed by other definitions.\"", 2, 21, 6, 30246309700212855970, "Local", 
-   "FeynCalc`MTD"},
-  "MessageTemplate2",
-  BaseStyle->"MSG"]], "Message",
- CellChangeTimes->{3.970295775454298*^9},
- CellLabel->
-  "During evaluation of \
-In[21]:=",ExpressionUUID->"efd19308-d500-4872-bb8f-51627ea94506"],
-
-Cell[BoxData[
- TemplateBox[{
-  "SP", "shdw", 
-   "\"Symbol \\!\\(\\*RowBox[{\\\"\\\\\\\"SP\\\\\\\"\\\"}]\\) appears in \
-multiple contexts \\!\\(\\*RowBox[{\\\"{\\\", RowBox[{\\\"\\\\\\\"FeynCalc`\\\
-\\\\\"\\\", \\\",\\\", \\\"\\\\\\\"Global`\\\\\\\"\\\"}], \\\"}\\\"}]\\); \
-definitions in context \
-\\!\\(\\*RowBox[{\\\"\\\\\\\"FeynCalc`\\\\\\\"\\\"}]\\) may shadow or be \
-shadowed by other definitions.\"", 2, 21, 7, 30246309700212855970, "Local", 
-   "FeynCalc`SP"},
-  "MessageTemplate2",
-  BaseStyle->"MSG"]], "Message",
- CellChangeTimes->{3.970295775458572*^9},
- CellLabel->
-  "During evaluation of \
-In[21]:=",ExpressionUUID->"8756bc5f-35d5-40f4-89e5-7e051175e6a2"],
-
-Cell[BoxData[
- TemplateBox[{
-  "TemporalPair", "shdw", 
-   "\"Symbol \\!\\(\\*RowBox[{\\\"\\\\\\\"TemporalPair\\\\\\\"\\\"}]\\) \
-appears in multiple contexts \\!\\(\\*RowBox[{\\\"{\\\", \
-RowBox[{\\\"\\\\\\\"FeynCalc`\\\\\\\"\\\", \\\",\\\", \\\"\\\\\\\"Global`\\\\\
-\\\"\\\"}], \\\"}\\\"}]\\); definitions in context \
-\\!\\(\\*RowBox[{\\\"\\\\\\\"FeynCalc`\\\\\\\"\\\"}]\\) may shadow or be \
-shadowed by other definitions.\"", 2, 21, 8, 30246309700212855970, "Local", 
-   "FeynCalc`TemporalPair"},
-  "MessageTemplate2",
-  BaseStyle->"MSG"]], "Message",
- CellChangeTimes->{3.970295775469336*^9},
- CellLabel->
-  "During evaluation of \
-In[21]:=",ExpressionUUID->"99e67469-847c-4331-bf9e-ebbe72eded52"],
-
-Cell[BoxData[
- TemplateBox[{
-  "TemporalMomentum", "shdw", 
-   "\"Symbol \\!\\(\\*RowBox[{\\\"\\\\\\\"TemporalMomentum\\\\\\\"\\\"}]\\) \
-appears in multiple contexts \\!\\(\\*RowBox[{\\\"{\\\", \
-RowBox[{\\\"\\\\\\\"FeynCalc`\\\\\\\"\\\", \\\",\\\", \\\"\\\\\\\"Global`\\\\\
-\\\"\\\"}], \\\"}\\\"}]\\); definitions in context \
-\\!\\(\\*RowBox[{\\\"\\\\\\\"FeynCalc`\\\\\\\"\\\"}]\\) may shadow or be \
-shadowed by other definitions.\"", 2, 21, 9, 30246309700212855970, "Local", 
-   "FeynCalc`TemporalMomentum"},
-  "MessageTemplate2",
-  BaseStyle->"MSG"]], "Message",
- CellChangeTimes->{3.970295775473592*^9},
- CellLabel->
-  "During evaluation of \
-In[21]:=",ExpressionUUID->"a7eb949b-e9e2-4391-9166-698077b0f925"],
-
-Cell[BoxData[
- TemplateBox[{
-  "Contract", "shdw", 
-   "\"Symbol \\!\\(\\*RowBox[{\\\"\\\\\\\"Contract\\\\\\\"\\\"}]\\) appears \
-in multiple contexts \\!\\(\\*RowBox[{\\\"{\\\", \
-RowBox[{\\\"\\\\\\\"FeynCalc`\\\\\\\"\\\", \\\",\\\", \\\"\\\\\\\"Global`\\\\\
-\\\"\\\"}], \\\"}\\\"}]\\); definitions in context \
-\\!\\(\\*RowBox[{\\\"\\\\\\\"FeynCalc`\\\\\\\"\\\"}]\\) may shadow or be \
-shadowed by other definitions.\"", 2, 21, 10, 30246309700212855970, "Local", 
-   "FeynCalc`Contract"},
-  "MessageTemplate2",
-  BaseStyle->"MSG"]], "Message",
- CellChangeTimes->{3.9702957755190897`*^9},
- CellLabel->
-  "During evaluation of \
-In[21]:=",ExpressionUUID->"b24ec381-c8f3-490e-8e9d-afdcb42cef3b"],
-
-Cell[BoxData[
- TemplateBox[{
-  "ComplexConjugate", "shdw", 
-   "\"Symbol \\!\\(\\*RowBox[{\\\"\\\\\\\"ComplexConjugate\\\\\\\"\\\"}]\\) \
-appears in multiple contexts \\!\\(\\*RowBox[{\\\"{\\\", \
-RowBox[{\\\"\\\\\\\"FeynCalc`\\\\\\\"\\\", \\\",\\\", \\\"\\\\\\\"Global`\\\\\
-\\\"\\\"}], \\\"}\\\"}]\\); definitions in context \
-\\!\\(\\*RowBox[{\\\"\\\\\\\"FeynCalc`\\\\\\\"\\\"}]\\) may shadow or be \
-shadowed by other definitions.\"", 2, 21, 11, 30246309700212855970, "Local", 
-   "FeynCalc`ComplexConjugate"},
-  "MessageTemplate2",
-  BaseStyle->"MSG"]], "Message",
- CellChangeTimes->{3.970295775558791*^9},
- CellLabel->
-  "During evaluation of \
-In[21]:=",ExpressionUUID->"79fabe79-4422-4d15-ad12-594a106ee24d"],
+ CellLabel->"In[5]:=",ExpressionUUID->"1bb96c98-9835-4fb2-85d7-76636b49480d"],
 
 Cell[CellGroupData[{
 
@@ -331,7 +143,282 @@ our work is crucial to ensure the future development of this package!\"\>",
  CellChangeTimes->{3.970287286603591*^9, 3.970295777745657*^9},
  CellLabel->
   "During evaluation of \
-In[21]:=",ExpressionUUID->"87e778b2-8e1e-4758-8b16-048bbc781dcb"],
+In[21]:=",ExpressionUUID->"87e778b2-8e1e-4758-8b16-048bbc781dcb"]
+}, Open  ]],
+
+Cell[BoxData[
+ TemplateBox[{
+  "FCE", "shdw", 
+   "\"Symbol \\!\\(\\*RowBox[{\\\"\\\\\\\"FCE\\\\\\\"\\\"}]\\) appears in \
+multiple contexts \\!\\(\\*RowBox[{\\\"{\\\", RowBox[{\\\"\\\\\\\"FeynCalc`\\\
+\\\\\"\\\", \\\",\\\", \\\"\\\\\\\"Global`\\\\\\\"\\\"}], \\\"}\\\"}]\\); \
+definitions in context \
+\\!\\(\\*RowBox[{\\\"\\\\\\\"FeynCalc`\\\\\\\"\\\"}]\\) may shadow or be \
+shadowed by other definitions.\"", 2, 5, 1, 30246350655900667190, "Local", 
+   "FeynCalc`FCE"},
+  "MessageTemplate2",
+  BaseStyle->"MSG"]], "Message",
+ CellChangeTimes->{3.970295775183271*^9, 3.970301750035974*^9},
+ CellLabel->
+  "During evaluation of \
+In[5]:=",ExpressionUUID->"48a87005-fee5-4e71-8736-b3ddb9289524"],
+
+Cell[BoxData[
+ TemplateBox[{
+  "ExplicitLorentzIndex", "shdw", 
+   "\"Symbol \
+\\!\\(\\*RowBox[{\\\"\\\\\\\"ExplicitLorentzIndex\\\\\\\"\\\"}]\\) appears in \
+multiple contexts \\!\\(\\*RowBox[{\\\"{\\\", RowBox[{\\\"\\\\\\\"FeynCalc`\\\
+\\\\\"\\\", \\\",\\\", \\\"\\\\\\\"Global`\\\\\\\"\\\"}], \\\"}\\\"}]\\); \
+definitions in context \
+\\!\\(\\*RowBox[{\\\"\\\\\\\"FeynCalc`\\\\\\\"\\\"}]\\) may shadow or be \
+shadowed by other definitions.\"", 2, 5, 2, 30246350655900667190, "Local", 
+   "FeynCalc`ExplicitLorentzIndex"},
+  "MessageTemplate2",
+  BaseStyle->"MSG"]], "Message",
+ CellChangeTimes->{3.970295775183271*^9, 3.9703017501593533`*^9},
+ CellLabel->
+  "During evaluation of \
+In[5]:=",ExpressionUUID->"15b2c0c9-dbb0-4f2f-83a3-c1f2bf3dacee"],
+
+Cell[BoxData[
+ TemplateBox[{
+  "FVD", "shdw", 
+   "\"Symbol \\!\\(\\*RowBox[{\\\"\\\\\\\"FVD\\\\\\\"\\\"}]\\) appears in \
+multiple contexts \\!\\(\\*RowBox[{\\\"{\\\", RowBox[{\\\"\\\\\\\"FeynCalc`\\\
+\\\\\"\\\", \\\",\\\", \\\"\\\\\\\"Global`\\\\\\\"\\\"}], \\\"}\\\"}]\\); \
+definitions in context \
+\\!\\(\\*RowBox[{\\\"\\\\\\\"FeynCalc`\\\\\\\"\\\"}]\\) may shadow or be \
+shadowed by other definitions.\"", 2, 5, 3, 30246350655900667190, "Local", 
+   "FeynCalc`FVD"},
+  "MessageTemplate2",
+  BaseStyle->"MSG"]], "Message",
+ CellChangeTimes->{3.970295775183271*^9, 3.9703017501684113`*^9},
+ CellLabel->
+  "During evaluation of \
+In[5]:=",ExpressionUUID->"968a7216-25e4-45c7-ba6a-254dfd19dc29"],
+
+Cell[BoxData[
+ TemplateBox[{
+  "MTD", "shdw", 
+   "\"Symbol \\!\\(\\*RowBox[{\\\"\\\\\\\"MTD\\\\\\\"\\\"}]\\) appears in \
+multiple contexts \\!\\(\\*RowBox[{\\\"{\\\", RowBox[{\\\"\\\\\\\"FeynCalc`\\\
+\\\\\"\\\", \\\",\\\", \\\"\\\\\\\"Global`\\\\\\\"\\\"}], \\\"}\\\"}]\\); \
+definitions in context \
+\\!\\(\\*RowBox[{\\\"\\\\\\\"FeynCalc`\\\\\\\"\\\"}]\\) may shadow or be \
+shadowed by other definitions.\"", 2, 5, 4, 30246350655900667190, "Local", 
+   "FeynCalc`MTD"},
+  "MessageTemplate2",
+  BaseStyle->"MSG"]], "Message",
+ CellChangeTimes->{3.970295775183271*^9, 3.970301750216815*^9},
+ CellLabel->
+  "During evaluation of \
+In[5]:=",ExpressionUUID->"b73c9778-ca7d-447a-a59f-e1fe6d56790e"],
+
+Cell[BoxData[
+ TemplateBox[{
+  "TemporalPair", "shdw", 
+   "\"Symbol \\!\\(\\*RowBox[{\\\"\\\\\\\"TemporalPair\\\\\\\"\\\"}]\\) \
+appears in multiple contexts \\!\\(\\*RowBox[{\\\"{\\\", \
+RowBox[{\\\"\\\\\\\"FeynCalc`\\\\\\\"\\\", \\\",\\\", \\\"\\\\\\\"Global`\\\\\
+\\\"\\\"}], \\\"}\\\"}]\\); definitions in context \
+\\!\\(\\*RowBox[{\\\"\\\\\\\"FeynCalc`\\\\\\\"\\\"}]\\) may shadow or be \
+shadowed by other definitions.\"", 2, 5, 5, 30246350655900667190, "Local", 
+   "FeynCalc`TemporalPair"},
+  "MessageTemplate2",
+  BaseStyle->"MSG"]], "Message",
+ CellChangeTimes->{3.970295775183271*^9, 3.970301750221488*^9},
+ CellLabel->
+  "During evaluation of \
+In[5]:=",ExpressionUUID->"ab0ace23-de24-4fa7-9749-125ec5a1b37f"],
+
+Cell[BoxData[
+ TemplateBox[{
+  "TemporalMomentum", "shdw", 
+   "\"Symbol \\!\\(\\*RowBox[{\\\"\\\\\\\"TemporalMomentum\\\\\\\"\\\"}]\\) \
+appears in multiple contexts \\!\\(\\*RowBox[{\\\"{\\\", \
+RowBox[{\\\"\\\\\\\"FeynCalc`\\\\\\\"\\\", \\\",\\\", \\\"\\\\\\\"Global`\\\\\
+\\\"\\\"}], \\\"}\\\"}]\\); definitions in context \
+\\!\\(\\*RowBox[{\\\"\\\\\\\"FeynCalc`\\\\\\\"\\\"}]\\) may shadow or be \
+shadowed by other definitions.\"", 2, 5, 6, 30246350655900667190, "Local", 
+   "FeynCalc`TemporalMomentum"},
+  "MessageTemplate2",
+  BaseStyle->"MSG"]], "Message",
+ CellChangeTimes->{3.970295775183271*^9, 3.970301750250683*^9},
+ CellLabel->
+  "During evaluation of \
+In[5]:=",ExpressionUUID->"f2b33397-a6e8-4cce-88f2-bc41640c445a"],
+
+Cell[BoxData[
+ TemplateBox[{
+  "Calc", "shdw", 
+   "\"Symbol \\!\\(\\*RowBox[{\\\"\\\\\\\"Calc\\\\\\\"\\\"}]\\) appears in \
+multiple contexts \\!\\(\\*RowBox[{\\\"{\\\", RowBox[{\\\"\\\\\\\"FeynCalc`\\\
+\\\\\"\\\", \\\",\\\", \\\"\\\\\\\"Global`\\\\\\\"\\\"}], \\\"}\\\"}]\\); \
+definitions in context \
+\\!\\(\\*RowBox[{\\\"\\\\\\\"FeynCalc`\\\\\\\"\\\"}]\\) may shadow or be \
+shadowed by other definitions.\"", 2, 5, 7, 30246350655900667190, "Local", 
+   "FeynCalc`Calc"},
+  "MessageTemplate2",
+  BaseStyle->"MSG"]], "Message",
+ CellChangeTimes->{3.970295775183271*^9, 3.970301750281671*^9},
+ CellLabel->
+  "During evaluation of \
+In[5]:=",ExpressionUUID->"a875230b-5dc8-415e-a14b-559b3450e273"],
+
+Cell[BoxData[
+ TemplateBox[{
+  "Contract", "shdw", 
+   "\"Symbol \\!\\(\\*RowBox[{\\\"\\\\\\\"Contract\\\\\\\"\\\"}]\\) appears \
+in multiple contexts \\!\\(\\*RowBox[{\\\"{\\\", \
+RowBox[{\\\"\\\\\\\"FeynCalc`\\\\\\\"\\\", \\\",\\\", \\\"\\\\\\\"Global`\\\\\
+\\\"\\\"}], \\\"}\\\"}]\\); definitions in context \
+\\!\\(\\*RowBox[{\\\"\\\\\\\"FeynCalc`\\\\\\\"\\\"}]\\) may shadow or be \
+shadowed by other definitions.\"", 2, 5, 8, 30246350655900667190, "Local", 
+   "FeynCalc`Contract"},
+  "MessageTemplate2",
+  BaseStyle->"MSG"]], "Message",
+ CellChangeTimes->{3.970295775183271*^9, 3.970301750313105*^9},
+ CellLabel->
+  "During evaluation of \
+In[5]:=",ExpressionUUID->"dbef9511-5cf9-4b4d-ab64-bfe1fef414ff"],
+
+Cell[BoxData[
+ TemplateBox[{
+  "ComplexConjugate", "shdw", 
+   "\"Symbol \\!\\(\\*RowBox[{\\\"\\\\\\\"ComplexConjugate\\\\\\\"\\\"}]\\) \
+appears in multiple contexts \\!\\(\\*RowBox[{\\\"{\\\", \
+RowBox[{\\\"\\\\\\\"FeynCalc`\\\\\\\"\\\", \\\",\\\", \\\"\\\\\\\"Global`\\\\\
+\\\"\\\"}], \\\"}\\\"}]\\); definitions in context \
+\\!\\(\\*RowBox[{\\\"\\\\\\\"FeynCalc`\\\\\\\"\\\"}]\\) may shadow or be \
+shadowed by other definitions.\"", 2, 5, 9, 30246350655900667190, "Local", 
+   "FeynCalc`ComplexConjugate"},
+  "MessageTemplate2",
+  BaseStyle->"MSG"]], "Message",
+ CellChangeTimes->{3.970295775183271*^9, 3.970301750365415*^9},
+ CellLabel->
+  "During evaluation of \
+In[5]:=",ExpressionUUID->"60d2ac4a-9dd0-4740-87c5-1ced8eb078b4"],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ InterpretationBox[
+  RowBox[{
+   StyleBox["\<\"FeynCalc \"\>", "Text",
+    StripOnInput->False,
+    FontWeight->Bold], "\[InvisibleSpace]", 
+   StyleBox["\<\"10.1.0 (stable version). For help, use the \"\>", "Text",
+    StripOnInput->False], "\[InvisibleSpace]", 
+   StyleBox[
+    TagBox[
+     ButtonBox[
+      RowBox[{
+       RowBox[{"online", " ", "documentation"}], ","}],
+      BaseStyle->"Hyperlink",
+      ButtonData:>{
+        URL["https://feyncalc.github.io/referenceDev"], None},
+      ButtonNote->"https://feyncalc.github.io/referenceDev"],
+     DisplayForm], "Text",
+    StripOnInput->False], "\[InvisibleSpace]", 
+   StyleBox["\<\" visit the \"\>", "Text",
+    StripOnInput->False], "\[InvisibleSpace]", 
+   StyleBox[
+    TagBox[
+     ButtonBox["forum",
+      BaseStyle->"Hyperlink",
+      ButtonData:>{
+        URL["https://github.com/FeynCalc/feyncalc/discussions"], None},
+      ButtonNote->"https://github.com/FeynCalc/feyncalc/discussions/"],
+     DisplayForm], "Text",
+    StripOnInput->False], "\[InvisibleSpace]", 
+   StyleBox["\<\" and have a look at the supplied \"\>", "Text",
+    StripOnInput->False], "\[InvisibleSpace]", 
+   StyleBox[
+    TagBox[
+     ButtonBox[
+      RowBox[{"examples", "."}],
+      BaseStyle->"Hyperlink",
+      ButtonFunction:>SystemOpen[
+        FileNameJoin[{FeynCalc`$FeynCalcDirectory, "Examples"}]],
+      Evaluator->Automatic,
+      Method->"Preemptive"],
+     DisplayForm], "Text",
+    StripOnInput->False], "\[InvisibleSpace]", 
+   StyleBox["\<\" The PDF-version of the manual can be downloaded \"\>", 
+    "Text",
+    StripOnInput->False], "\[InvisibleSpace]", 
+   StyleBox[
+    TagBox[
+     ButtonBox[
+      RowBox[{"here", "."}],
+      BaseStyle->"Hyperlink",
+      ButtonData:>{
+        URL[
+        "https://github.com/FeynCalc/feyncalc-manual/releases/download/dev-\
+manual/FeynCalcManual.pdf"], None},
+      ButtonNote->
+       "https://github.com/FeynCalc/feyncalc-manual/releases/download/dev-\
+manual/FeynCalcManual.pdf"],
+     DisplayForm], "Text",
+    StripOnInput->False]}],
+  SequenceForm[
+   Style["FeynCalc ", "Text", Bold], 
+   Style["10.1.0 (stable version). For help, use the ", "Text"], 
+   Style[
+    DisplayForm[
+     ButtonBox["online documentation,", ButtonData :> {
+        URL["https://feyncalc.github.io/referenceDev"], None}, BaseStyle -> 
+      "Hyperlink", ButtonNote -> "https://feyncalc.github.io/referenceDev"]], 
+    "Text"], 
+   Style[" visit the ", "Text"], 
+   Style[
+    DisplayForm[
+     ButtonBox["forum", ButtonData :> {
+        URL["https://github.com/FeynCalc/feyncalc/discussions"], None}, 
+      BaseStyle -> "Hyperlink", ButtonNote -> 
+      "https://github.com/FeynCalc/feyncalc/discussions/"]], "Text"], 
+   Style[" and have a look at the supplied ", "Text"], 
+   Style[
+    DisplayForm[
+     ButtonBox[
+     "examples.", BaseStyle -> "Hyperlink", ButtonFunction :> SystemOpen[
+        FileNameJoin[{FeynCalc`$FeynCalcDirectory, "Examples"}]], Evaluator -> 
+      Automatic, Method -> "Preemptive"]], "Text"], 
+   Style[" The PDF-version of the manual can be downloaded ", "Text"], 
+   Style[
+    DisplayForm[
+     ButtonBox["here.", ButtonData :> {
+        URL[
+        "https://github.com/FeynCalc/feyncalc-manual/releases/download/dev-\
+manual/FeynCalcManual.pdf"], None}, BaseStyle -> "Hyperlink", ButtonNote -> 
+      "https://github.com/FeynCalc/feyncalc-manual/releases/download/dev-\
+manual/FeynCalcManual.pdf"]], "Text"]],
+  Editable->False]], "Print",
+ CellChangeTimes->{3.970301752260956*^9},
+ CellLabel->
+  "During evaluation of \
+In[5]:=",ExpressionUUID->"e757bc0b-847e-49a4-b213-4760aa55c97f"],
+
+Cell[BoxData[
+ StyleBox["\<\"If you use FeynCalc in your research, please evaluate \
+FeynCalcHowToCite[] to learn how to cite this software.\"\>", "Text",
+  StripOnInput->False]], "Print",
+ CellChangeTimes->{3.970301752267086*^9},
+ CellLabel->
+  "During evaluation of \
+In[5]:=",ExpressionUUID->"8c839161-d1c7-486e-bc26-41ccd1c4cc40"],
+
+Cell[BoxData[
+ StyleBox["\<\"Please keep in mind that the proper academic attribution of \
+our work is crucial to ensure the future development of this package!\"\>", 
+  "Text",
+  StripOnInput->False,
+  FontSlant->Italic]], "Print",
+ CellChangeTimes->{3.970301752268546*^9},
+ CellLabel->
+  "During evaluation of \
+In[5]:=",ExpressionUUID->"bdd52938-b095-4e02-a3fe-f1abbe3bfd54"],
 
 Cell[BoxData[
  FormBox[
@@ -378,9 +465,8 @@ Cell[BoxData[
      RowBox[{"-", "p3"}], ",", 
      RowBox[{"-", "p4"}], ",", "m", ",", "m", ",", "0", ",", "0"}], "]"}], 
    ";"}], " "}]], "Input",
- CellChangeTimes->{{3.970299462259561*^9, 
-  3.970299474924418*^9}},ExpressionUUID->"aa9a1b7d-8e76-453c-9b8d-\
-f853ca5f698e"],
+ CellChangeTimes->{{3.970299462259561*^9, 3.970299474924418*^9}},
+ CellLabel->"In[6]:=",ExpressionUUID->"aa9a1b7d-8e76-453c-9b8d-f853ca5f698e"],
 
 Cell[CellGroupData[{
 
@@ -490,8 +576,8 @@ Cell[BoxData[{
   3.970286851227899*^9, 3.970286854796088*^9}, {3.970286917309449*^9, 
   3.970287014176731*^9}, {3.9702874066310368`*^9, 3.970287407574355*^9}, {
   3.97029941407472*^9, 3.97029941424216*^9}, {3.970299446468096*^9, 
-  3.970299447035357*^9}},ExpressionUUID->"064011ec-55e0-4464-81ed-\
-15428714b85c"]
+  3.970299447035357*^9}},
+ CellLabel->"In[7]:=",ExpressionUUID->"064011ec-55e0-4464-81ed-15428714b85c"]
 }, Open  ]],
 
 Cell[CellGroupData[{
@@ -541,7 +627,7 @@ Cell[BoxData[
    3.9701981893663673`*^9}, {3.9702868152668657`*^9, 3.970286819676056*^9}, {
    3.970286851227899*^9, 3.970286854796088*^9}, {3.970286917309449*^9, 
    3.970287027697105*^9}, 3.9702870855309362`*^9},
- CellLabel->"In[26]:=",ExpressionUUID->"2c6c9a67-048c-47a1-bd2f-349189ed94bf"]
+ CellLabel->"In[10]:=",ExpressionUUID->"2c6c9a67-048c-47a1-bd2f-349189ed94bf"]
 }, Open  ]],
 
 Cell[CellGroupData[{
@@ -632,7 +718,7 @@ Cell[BoxData[{
   3.970286947735471*^9}, {3.970287061290484*^9, 3.970287075594946*^9}, {
   3.970287414191285*^9, 3.970287430623953*^9}, {3.970295467325955*^9, 
   3.970295472124805*^9}, {3.970295607136344*^9, 3.97029562919223*^9}},
- CellLabel->"In[27]:=",ExpressionUUID->"0c00e73a-5f75-41a1-9624-f366cbc6cc5f"]
+ CellLabel->"In[11]:=",ExpressionUUID->"0c00e73a-5f75-41a1-9624-f366cbc6cc5f"]
 }, Open  ]],
 
 Cell[CellGroupData[{
@@ -736,14 +822,13 @@ Cell[BoxData[
        RowBox[{"MT", "[", 
         RowBox[{"\[Sigma]", ",", "\[Nu]"}], "]"}], "*", 
        RowBox[{"MT", "[", 
-        RowBox[{"\[Gamma]", ",", "\[Beta]"}], "]"}]}]}]}], ";"}], 
-   "\[IndentingNewLine]", 
+        RowBox[{"\[Gamma]", ",", "\[Beta]"}], "]"}]}]}]}], ";"}], "\n", 
    RowBox[{"(*", 
     RowBox[{
      RowBox[{
      "Note", " ", "that", " ", "the", " ", "two", " ", "terms", " ", "are", " ",
        "indeed", " ", "different"}], ",", " ", "respectively", ",", " ", 
-     RowBox[{"even", " ", "after", " ", "symmetrization"}]}], "*)"}], "\n", 
+     RowBox[{"even", " ", "after", " ", "symmetrization"}]}], "*)"}], "\[IndentingNewLine]", 
    RowBox[{
     RowBox[{
      RowBox[{"P6SP", "[", 
@@ -929,8 +1014,7 @@ Cell[BoxData[
        " ", "\[Nu]_", ",", " ", "\[Beta]_", ",", " ", "k3_", ",", " ", 
        "\[Sigma]_", ",", " ", "\[Gamma]_"}], "]"}], ":=", 
      RowBox[{
-      FractionBox[
-       RowBox[{"2", "I"}], "Mp"], "*", 
+      FractionBox["I", "Mp"], "*", 
       RowBox[{"(", 
        RowBox[{
         RowBox[{"Ptot", "[", 
@@ -988,7 +1072,8 @@ Cell[BoxData[
    3.970284806604026*^9, 3.970284836484118*^9}, 3.97028690289557*^9, {
    3.970287214019842*^9, 3.970287214972488*^9}, {3.9702956519823093`*^9, 
    3.9702956974433804`*^9}, {3.9703013850823603`*^9, 
-   3.9703013932028847`*^9}},ExpressionUUID->"438c77c8-1a9f-4a39-995f-\
+   3.9703013932028847`*^9}, {3.9705426806201344`*^9, 
+   3.970542684396043*^9}},ExpressionUUID->"438c77c8-1a9f-4a39-995f-\
 15521a32979c"]
 }, Open  ]]
 }, Open  ]],
@@ -1141,9 +1226,10 @@ Cell[BoxData[
    3.97029736210115*^9}, {3.970297427119323*^9, 3.97029749244669*^9}, {
    3.970298022233738*^9, 3.970298036343842*^9}, {3.970299058112611*^9, 
    3.9702990812888947`*^9}, {3.970299244357359*^9, 3.970299257293428*^9}, {
-   3.970301064287871*^9, 3.9703010724223547`*^9}},
- CellLabel->
-  "In[102]:=",ExpressionUUID->"fc132193-14f0-49f4-8640-8d42e46a09af"],
+   3.970301064287871*^9, 3.9703010724223547`*^9}, {3.970301717867716*^9, 
+   3.9703017444711437`*^9}, {3.970302231677883*^9, 
+   3.970302237269875*^9}},ExpressionUUID->"fc132193-14f0-49f4-8640-\
+8d42e46a09af"],
 
 Cell[BoxData[
  FormBox[
@@ -1157,9 +1243,9 @@ Cell[BoxData[
  CellChangeTimes->{{3.970297082982531*^9, 3.970297093626877*^9}, 
    3.970297328638506*^9, {3.970297358775591*^9, 3.9702973724207087`*^9}, 
    3.9702974383689957`*^9, 3.970297964694323*^9, 3.9702980398630247`*^9, 
-   3.970298495796605*^9, 3.970299534018783*^9, 3.970301540379951*^9},
- CellLabel->
-  "Out[105]=",ExpressionUUID->"6076dff1-826f-47f0-9c4b-656c27493e18"]
+   3.970298495796605*^9, 3.970299534018783*^9, 3.970301540379951*^9, 
+   3.970301745163043*^9, 3.970302224131501*^9},
+ CellLabel->"Out[24]=",ExpressionUUID->"6cae10be-61ba-4b4a-8a31-f3e180441149"]
 }, Open  ]],
 
 Cell[CellGroupData[{
@@ -1272,23 +1358,64 @@ Cell[BoxData[
  CellChangeTimes->{{3.970299208667788*^9, 3.970299213844222*^9}, {
   3.9702992792452717`*^9, 3.9702992948947763`*^9}, {3.970300161372813*^9, 
   3.970300217039362*^9}, {3.970300281681682*^9, 3.970300296674111*^9}, {
-  3.9703003944054956`*^9, 
-  3.970300395565359*^9}},ExpressionUUID->"34598fb2-00b2-4c82-b087-\
-afd93bb8faf9"],
+  3.9703003944054956`*^9, 3.970300395565359*^9}},
+ CellLabel->"In[25]:=",ExpressionUUID->"34598fb2-00b2-4c82-b087-afd93bb8faf9"],
 
 Cell[BoxData[
- FormBox["$Aborted", TraditionalForm]], "Output",
- CellChangeTimes->{3.970300232045573*^9, 3.970300428437408*^9, 
-  3.970301080950737*^9},
- CellLabel->
-  "Out[100]=",ExpressionUUID->"df1f3d5b-87f5-48cc-890c-d870aaf64e49"],
-
-Cell[BoxData[
- FormBox["$Aborted", TraditionalForm]], "Output",
- CellChangeTimes->{3.970300232045573*^9, 3.970300428437408*^9, 
-  3.97030108095164*^9},
- CellLabel->
-  "Out[101]=",ExpressionUUID->"7a5f654f-e600-4884-b08a-5e2894c8ee98"]
+ FormBox[
+  FractionBox[
+   RowBox[{"2", " ", 
+    SuperscriptBox["\[Kappa]", "2"], " ", 
+    SuperscriptBox[
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{
+        SuperscriptBox["mt", "2"], " ", 
+        RowBox[{"(", 
+         RowBox[{"K", "-", 
+          RowBox[{"3", " ", "V"}]}], ")"}]}], "-", 
+       RowBox[{"K", " ", 
+        RowBox[{"(", 
+         RowBox[{
+          RowBox[{"-", 
+           RowBox[{
+            SuperscriptBox[
+             FormBox[
+              FormBox[
+               FormBox["p3",
+                TraditionalForm],
+               TraditionalForm],
+              TraditionalForm], "0"], " ", 
+            SuperscriptBox[
+             FormBox[
+              FormBox[
+               FormBox["p4",
+                TraditionalForm],
+               TraditionalForm],
+              TraditionalForm], "0"]}]}], "+", 
+          SuperscriptBox[
+           RowBox[{"(", 
+            SuperscriptBox[
+             FormBox[
+              FormBox[
+               FormBox["p3",
+                TraditionalForm],
+               TraditionalForm],
+              TraditionalForm], "0"], ")"}], "2"], "+", 
+          SuperscriptBox[
+           RowBox[{"(", 
+            SuperscriptBox[
+             FormBox[
+              FormBox[
+               FormBox["p4",
+                TraditionalForm],
+               TraditionalForm],
+              TraditionalForm], "0"], ")"}], "2"]}], ")"}]}]}], ")"}], "2"]}], 
+   RowBox[{
+    SuperscriptBox["Mp", "2"], " ", 
+    SuperscriptBox["mt", "4"]}]], TraditionalForm]], "Output",
+ CellChangeTimes->{3.970304720323017*^9},
+ CellLabel->"Out[29]=",ExpressionUUID->"73f0d8f4-36d2-4127-a81b-128fd475c93d"]
 }, Open  ]]
 }, Open  ]]
 },
@@ -1310,55 +1437,57 @@ CellTagsIndex->{}
 (*NotebookFileOutline
 Notebook[{
 Cell[CellGroupData[{
-Cell[580, 22, 200, 3, 29, "Input",ExpressionUUID->"1bb96c98-9835-4fb2-85d7-76636b49480d"],
-Cell[783, 27, 676, 15, 27, "Message",ExpressionUUID->"446a3868-3227-412f-be9a-d441e2fcfaca"],
-Cell[1462, 44, 729, 16, 27, "Message",ExpressionUUID->"414adbb4-7fe6-49ab-9d28-2f4a2f52c44c"],
-Cell[2194, 62, 672, 15, 27, "Message",ExpressionUUID->"bba6c6e5-042e-442c-ac66-5a8bea6cbee0"],
-Cell[2869, 79, 676, 15, 27, "Message",ExpressionUUID->"0c718c65-9402-43f6-8f08-cd9d3821f221"],
-Cell[3548, 96, 675, 15, 27, "Message",ExpressionUUID->"8978970d-7f12-4fa2-9c5e-51845731dae6"],
-Cell[4226, 113, 676, 15, 27, "Message",ExpressionUUID->"efd19308-d500-4872-bb8f-51627ea94506"],
-Cell[4905, 130, 673, 15, 27, "Message",ExpressionUUID->"8756bc5f-35d5-40f4-89e5-7e051175e6a2"],
-Cell[5581, 147, 703, 15, 27, "Message",ExpressionUUID->"99e67469-847c-4331-bf9e-ebbe72eded52"],
-Cell[6287, 164, 715, 15, 27, "Message",ExpressionUUID->"a7eb949b-e9e2-4391-9166-698077b0f925"],
-Cell[7005, 181, 694, 15, 27, "Message",ExpressionUUID->"b24ec381-c8f3-490e-8e9d-afdcb42cef3b"],
-Cell[7702, 198, 716, 15, 27, "Message",ExpressionUUID->"79fabe79-4422-4d15-ad12-594a106ee24d"],
+Cell[580, 22, 199, 3, 29, "Input",ExpressionUUID->"1bb96c98-9835-4fb2-85d7-76636b49480d"],
 Cell[CellGroupData[{
-Cell[8443, 217, 3650, 96, 50, "Print",ExpressionUUID->"2bc8e1e3-854c-405d-8734-78fe1b206d61"],
-Cell[12096, 315, 357, 7, 26, "Print",ExpressionUUID->"35d9f969-a816-4884-8cf2-07da7114655e"],
-Cell[12456, 324, 401, 9, 26, "Print",ExpressionUUID->"87e778b2-8e1e-4758-8b16-048bbc781dcb"],
-Cell[12860, 335, 491, 12, 26, "Print",ExpressionUUID->"c8dfae6b-c07c-4b97-9503-6e151f644996"]
+Cell[804, 29, 3650, 96, 50, "Print",ExpressionUUID->"2bc8e1e3-854c-405d-8734-78fe1b206d61"],
+Cell[4457, 127, 357, 7, 26, "Print",ExpressionUUID->"35d9f969-a816-4884-8cf2-07da7114655e"],
+Cell[4817, 136, 401, 9, 26, "Print",ExpressionUUID->"87e778b2-8e1e-4758-8b16-048bbc781dcb"]
+}, Open  ]],
+Cell[5233, 148, 696, 15, 27, "Message",ExpressionUUID->"48a87005-fee5-4e71-8736-b3ddb9289524"],
+Cell[5932, 165, 751, 16, 27, "Message",ExpressionUUID->"15b2c0c9-dbb0-4f2f-83a3-c1f2bf3dacee"],
+Cell[6686, 183, 698, 15, 27, "Message",ExpressionUUID->"968a7216-25e4-45c7-ba6a-254dfd19dc29"],
+Cell[7387, 200, 696, 15, 27, "Message",ExpressionUUID->"b73c9778-ca7d-447a-a59f-e1fe6d56790e"],
+Cell[8086, 217, 723, 15, 27, "Message",ExpressionUUID->"ab0ace23-de24-4fa7-9749-125ec5a1b37f"],
+Cell[8812, 234, 735, 15, 27, "Message",ExpressionUUID->"f2b33397-a6e8-4cce-88f2-bc41640c445a"],
+Cell[9550, 251, 699, 15, 27, "Message",ExpressionUUID->"a875230b-5dc8-415e-a14b-559b3450e273"],
+Cell[10252, 268, 711, 15, 27, "Message",ExpressionUUID->"dbef9511-5cf9-4b4d-ab64-bfe1fef414ff"],
+Cell[10966, 285, 735, 15, 27, "Message",ExpressionUUID->"60d2ac4a-9dd0-4740-87c5-1ced8eb078b4"],
+Cell[CellGroupData[{
+Cell[11726, 304, 3625, 96, 50, "Print",ExpressionUUID->"e757bc0b-847e-49a4-b213-4760aa55c97f"],
+Cell[15354, 402, 334, 7, 26, "Print",ExpressionUUID->"8c839161-d1c7-486e-bc26-41ccd1c4cc40"],
+Cell[15691, 411, 378, 9, 26, "Print",ExpressionUUID->"bdd52938-b095-4e02-a3fe-f1abbe3bfd54"],
+Cell[16072, 422, 491, 12, 26, "Print",ExpressionUUID->"c8dfae6b-c07c-4b97-9503-6e151f644996"]
 }, Open  ]]
 }, Open  ]],
 Cell[CellGroupData[{
-Cell[13400, 353, 665, 13, 65, "Section",ExpressionUUID->"7b938156-31dd-4f27-be21-5283cba1190a"],
-Cell[14068, 368, 533, 14, 51, "Input",ExpressionUUID->"aa9a1b7d-8e76-453c-9b8d-f853ca5f698e"],
+Cell[16612, 440, 665, 13, 65, "Section",ExpressionUUID->"7b938156-31dd-4f27-be21-5283cba1190a"],
+Cell[17280, 455, 551, 13, 51, "Input",ExpressionUUID->"aa9a1b7d-8e76-453c-9b8d-f853ca5f698e"],
 Cell[CellGroupData[{
-Cell[14626, 386, 661, 10, 53, "Subsection",ExpressionUUID->"8dc11766-3432-400c-86ef-24f8bc592d5f"],
-Cell[15290, 398, 3542, 95, 235, "Input",ExpressionUUID->"064011ec-55e0-4464-81ed-15428714b85c"]
+Cell[17856, 472, 661, 10, 53, "Subsection",ExpressionUUID->"8dc11766-3432-400c-86ef-24f8bc592d5f"],
+Cell[18520, 484, 3563, 95, 235, "Input",ExpressionUUID->"064011ec-55e0-4464-81ed-15428714b85c"]
 }, Open  ]],
 Cell[CellGroupData[{
-Cell[18869, 498, 561, 8, 53, "Subsection",ExpressionUUID->"d9b07cdd-1bc5-46e0-8200-195718e15b80"],
-Cell[19433, 508, 1427, 35, 57, "Input",ExpressionUUID->"2c6c9a67-048c-47a1-bd2f-349189ed94bf"]
+Cell[22120, 584, 561, 8, 53, "Subsection",ExpressionUUID->"d9b07cdd-1bc5-46e0-8200-195718e15b80"],
+Cell[22684, 594, 1427, 35, 57, "Input",ExpressionUUID->"2c6c9a67-048c-47a1-bd2f-349189ed94bf"]
 }, Open  ]],
 Cell[CellGroupData[{
-Cell[20897, 548, 597, 8, 53, "Subsection",ExpressionUUID->"21dfdcc4-b701-4a2d-b90d-4c391df7a568"],
-Cell[21497, 558, 3002, 76, 228, "Input",ExpressionUUID->"0c00e73a-5f75-41a1-9624-f366cbc6cc5f"]
+Cell[24148, 634, 597, 8, 53, "Subsection",ExpressionUUID->"21dfdcc4-b701-4a2d-b90d-4c391df7a568"],
+Cell[24748, 644, 3002, 76, 228, "Input",ExpressionUUID->"0c00e73a-5f75-41a1-9624-f366cbc6cc5f"]
 }, Open  ]],
 Cell[CellGroupData[{
-Cell[24536, 639, 1093, 15, 53, "Subsection",ExpressionUUID->"b506773a-2fbf-43c8-b88a-5c246cfd8f46"],
-Cell[25632, 656, 13407, 335, 606, "Input",ExpressionUUID->"438c77c8-1a9f-4a39-995f-15521a32979c"]
+Cell[27787, 725, 1093, 15, 53, "Subsection",ExpressionUUID->"b506773a-2fbf-43c8-b88a-5c246cfd8f46"],
+Cell[28883, 742, 13432, 334, 606, "Input",ExpressionUUID->"438c77c8-1a9f-4a39-995f-15521a32979c"]
 }, Open  ]]
 }, Open  ]],
 Cell[CellGroupData[{
-Cell[39088, 997, 1231, 18, 65, "Section",ExpressionUUID->"3056d706-1fc7-4602-934d-4022d78a79aa"],
+Cell[42364, 1082, 1231, 18, 65, "Section",ExpressionUUID->"3056d706-1fc7-4602-934d-4022d78a79aa"],
 Cell[CellGroupData[{
-Cell[40344, 1019, 5386, 126, 205, "Input",ExpressionUUID->"fc132193-14f0-49f4-8640-8d42e46a09af"],
-Cell[45733, 1147, 601, 14, 73, "Output",ExpressionUUID->"6076dff1-826f-47f0-9c4b-656c27493e18"]
+Cell[43620, 1104, 5462, 127, 205, "Input",ExpressionUUID->"fc132193-14f0-49f4-8640-8d42e46a09af"],
+Cell[49085, 1233, 645, 14, 73, "Output",ExpressionUUID->"6cae10be-61ba-4b4a-8a31-f3e180441149"]
 }, Open  ]],
 Cell[CellGroupData[{
-Cell[46371, 1166, 3934, 110, 162, "Input",ExpressionUUID->"34598fb2-00b2-4c82-b087-afd93bb8faf9"],
-Cell[50308, 1278, 235, 5, 32, "Output",ExpressionUUID->"df1f3d5b-87f5-48cc-890c-d870aaf64e49"],
-Cell[50546, 1285, 234, 5, 32, "Output",ExpressionUUID->"7a5f654f-e600-4884-b08a-5e2894c8ee98"]
+Cell[49767, 1252, 3953, 109, 162, "Input",ExpressionUUID->"34598fb2-00b2-4c82-b087-afd93bb8faf9"],
+Cell[53723, 1363, 1666, 54, 55, "Output",ExpressionUUID->"73f0d8f4-36d2-4127-a81b-128fd475c93d"]
 }, Open  ]]
 }, Open  ]]
 }

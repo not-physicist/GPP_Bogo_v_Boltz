@@ -184,7 +184,6 @@ function save_all(num_k, data_dir, log_k_i = 0, log_k_f = 2)
     # @info size(n) size(ρ) size(err)
     # @info log.(n)
     # @info size(f_boltz)
-    # BUG: without the factor 2, this gives spectrum thats 1/2 of the analytical results
     
     # mkpath(data_dir)
     npzwrite(data_dir * "spec_bogo.npz", Dict(

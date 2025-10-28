@@ -881,7 +881,7 @@ Cell[BoxData[
  CellLabel->"Out[23]=",ExpressionUUID->"2006e82e-42ec-42e2-8ed1-e07434ea04f3"]
 }, Open  ]]
 },
-WindowSize->{1260., 787.5},
+WindowSize->{1230., 766.5},
 WindowMargins->{{0, Automatic}, {Automatic, 0}},
 TaggingRules-><|"TryRealOnly" -> False|>,
 FrontEndVersion->"13.1 for Linux x86 (64-bit) (June 16, 2022)",
@@ -911,7 +911,7 @@ Cell[6627, 191, 840, 19, 45, "Print",ExpressionUUID->"c44b28ea-58e3-4bca-bf1d-7a
 Cell[7470, 212, 1310, 35, 25, "Print",ExpressionUUID->"2e742f87-0cdb-48d7-a6a1-fa34f10e244c"]
 }, Open  ]]
 }, Open  ]],
-Cell[8807, 251, 7230, 207, 418, "Input",ExpressionUUID->"4f79c938-1105-461f-bb4b-0c1db264106d"],
+Cell[8807, 251, 7230, 207, 424, "Input",ExpressionUUID->"4f79c938-1105-461f-bb4b-0c1db264106d"],
 Cell[CellGroupData[{
 Cell[16062, 462, 2967, 70, 181, "Input",ExpressionUUID->"bf3e559e-f657-46ed-9626-7f8277de97ac"],
 Cell[19032, 534, 590, 13, 55, "Output",ExpressionUUID->"6f392285-e2fa-459a-b811-53e58f7b04cf"]
