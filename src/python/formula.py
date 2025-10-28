@@ -44,6 +44,8 @@ def get_f_ana(k, Hₑ, mᵩ, Γ):
     # H_m = 1
     ex = np.exp(-4*Γ/(3*Hₑ) * ( (k*H_m)**(3/2) - 1) )
     f = 9*np.pi / 64 * H_m**(-3/2) * k**(-9/2) * ex
+    # print(np.interp(10, k, f))
+    # print(ex)
     return f
 
 

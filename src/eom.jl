@@ -157,6 +157,17 @@ function solve_eom(u₀::SVector{4, Float64},
 end
 
 """
+Compute the error of ODE solution by comparing a''/a from two methods
+    - from second Friedmann 
+    - from simply doing the derivatives
+"""
+function get_error(app_a, a, τ)
+    app_a_deriv = diff(diff(a) ./ diff(τ)) ./ diff(τ[1:end-1]) ./ a[1:end-2]
+    error = @. (app_a[1:end-2] - app_a_deriv) / app_a[1:end-2]
+    return error
+end
+
+"""
 from ODEsolution get ODEData
 """
 function get_EOMData(η, ϕ, dϕ, a, ρ_r, V, Γ, α, a_e)
@@ -198,6 +209,7 @@ function get_EOMData(η, ϕ, dϕ, a, ρ_r, V, Γ, α, a_e)
     
     w = @. get_eos(ϕ, dϕ, a, V, ρ_r, α)
     V = @. V(ϕ)
+    error = get_error(app_a, a, τ)
 
     # now need to discard the last two elements
     # as app_a_p has two less entries
@@ -205,7 +217,7 @@ function get_EOMData(η, ϕ, dϕ, a, ρ_r, V, Γ, α, a_e)
             ϕ[1:end-2], dϕ[1:end-2], 
             a[1:end-2], app_a[1:end-2], app_a_p,
             H[1:end-2], Ω_r[1:end-2], Ω_ϕ[1:end-2],
-            a_e, a_rh, H_e, w[1:end-2], V[1:end-2])
+            a_e, a_rh, H_e, w[1:end-2], V[1:end-2], error)
 end
 
 
@@ -234,6 +246,7 @@ struct EOMData{V<:Vector, F<:Real}
     
     w::V
     V::V
+    error::V
 end
 
 #=
@@ -280,7 +293,8 @@ function save_eom_npz(eom::EOMData, data_dir)
     "H_e" => eom.Hₑ,
     
     "w" => eom.w,
-    "V" => eom.V
+    "V" => eom.V,
+    "error" => eom.error
     ))
 end
 

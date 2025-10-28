@@ -46,6 +46,7 @@ def plot_back_single(dn):
     H_e = data["H_e"]
     N_e = np.log(a_e)
     print("a_rh/a_e = ", a_rh / a_e)
+    error = data["error"]
 
     fig, (ax1, ax2) = plt.subplots(ncols=2)
 
@@ -141,6 +142,20 @@ def plot_back_single(dn):
     plt.savefig(fig_fn, bbox_inches="tight")
     plt.close()
 
+    #############################
+    # error 
+    #############################
+    fig, ax = plt.subplots()
+    ax.plot(N[::100], error[::100])
+    ax.set_yscale("log")
+    ax.set_xlabel("$N$")
+    ax.set_ylabel("error for $a''/a$")
+    plt.tight_layout()
+    fig_fn = join(out_dn, "error.pdf")
+    plt.savefig(fig_fn, bbox_inches="tight")
+    plt.close()
+
+
 
 def plot_spec_single(dn):
     fn = join(dn, "spec_bogo.npz")
@@ -219,7 +234,6 @@ def draw_spec(dn, AX, AX2, label_pref, m_phi, Γ, c, ls):
     H = data_eom["H"]
     ρ_ϕ = data_eom["Omega_phi"] * 3 * H**2
     
-    '''
     try:
         # try to read out m_eff
         m_eff = data_eom["m_eff"]
@@ -227,9 +241,9 @@ def draw_spec(dn, AX, AX2, label_pref, m_phi, Γ, c, ls):
     except KeyError:
         # if not found, then no m_eff, just use m_phi
         f_exact_boltz = formula.get_f_exact_boltz(k, a, ρ_ϕ, H, m_phi, a_e, H_e)
-    '''
+    mask = f_exact_boltz > 1e-15
 
-    AX.plot(k, formula.get_f_ana(k, H_e, m_phi, Γ), color="tab:cyan", label="approx. Boltz.")
+    AX.plot(k[mask], f_exact_boltz[mask], color="tab:cyan", label="approx. Boltz.")
     AX.plot(k, n, ls=ls, color="k", label=label_pref+"Bogo.", alpha=0.5)
  
     try:
@@ -241,8 +255,8 @@ def draw_spec(dn, AX, AX2, label_pref, m_phi, Γ, c, ls):
     else:
         k = data["k"]
         f = data["f"]
-        # print(k, f)
-        AX.plot(k, f, color="k", ls="dotted", label=label_pref + "exact Boltz.")
+        mask = f > 1e-15
+        AX.plot(k[mask], f[mask], color="k", ls="dotted", label=label_pref + "exact Boltz.")
 
     
     if AX2 is not None:
@@ -306,6 +320,7 @@ def plot_all(dn):
             m, Γ = fn.replace("r=", "").split("-Γ=")
         m = float(m)
         Γ = float(Γ)
+        # BUG: possibly problematic for Chaotic4 and so on
 
         full_dn = join(dn, fn)
         plot_back_single(full_dn)
@@ -566,6 +581,6 @@ if __name__ == "__main__":
 
     # plot_back_single("../data/Chaotic6/r=4.5e-03-Γ=1.0e-12")
     # plot_back_single("../data/Chaotic6/r=4.5e-03-Γ=1.0e-10")
-    # plot_all("../data/Chaotic6/"
+    # plot_all("../data/Chaotic6/")
 
     # plot_all_n()
