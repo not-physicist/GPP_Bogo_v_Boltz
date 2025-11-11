@@ -9,6 +9,14 @@ using ..Commons
 
 using StaticArrays, OrdinaryDiffEq, Logging, NPZ, Serialization, NumericalIntegration, Peaks, LinearInterpolations
 
+const gStar = 106.75 
+
+# BUG: something wrong with the solver
+# related to changing p[4] from α to n
+
+# TODO: background solution not very good in the end
+# seen from errors in a''/a
+# maybe use the 2nd Friedmann as constraint
 """
 energy density of inflaton field
 in conformal time (dϕ = dϕdτ)
@@ -76,13 +84,21 @@ function _get_f(u, p, t)
 
     get_V = p[1]
     get_dV = p[2]
-    Γ = p[3]
-    α = p[4]
+    T = p[3]
+    n = p[4]
+    
+    α = 3 * (n-2)/(n+2)
     ω = α/3
 
     ρ_ϕ = get_ρ_ϕ(ϕ, dϕ, a, get_V, α)
     # conformal Hubble
     H = sqrt(abs(get_H2_conf(u..., get_V, α)))
+
+    Γ = (7-n)/(sqrt(3)*n) * T^(4/n) * (30/gStar/π^2)^(-1/n)
+    if n != 2 
+         Γ *= ρ_ϕ^(1/2 - 1/n)
+    end
+    # @info α, Γ
 
     return SA[dϕ, 
              -((3-α)*H + a^(α)*Γ)*dϕ - a^(2*α) * get_dV(ϕ), 
@@ -95,7 +111,7 @@ function for isoutofdomain
 return true when H is sqrt of some negative number
 """
 function _H_neg(u, p, t)
-    H2 = get_H2_conf(u..., p[1], p[4])
+    H2 = get_H2_conf(u..., p[1], 3*(p[4]-2)/(p[4]+2))
     if H2 < 0.0 
         return true 
     else
@@ -107,7 +123,8 @@ end
 function for callback
 """
 function _get_Omega_ϕ(u, p)
-    return get_ρ_ϕ(u[1], u[2], u[3], p[1], p[4]) / (u[4] + get_ρ_ϕ(u[1], u[2], u[3], p[1], p[4]))
+    α = 3 * (p[4] - 2) / (p[4] + 2)
+    return get_ρ_ϕ(u[1], u[2], u[3], p[1], α) / (u[4] + get_ρ_ϕ(u[1], u[2], u[3], p[1], α))
 end
 
 """
@@ -119,12 +136,13 @@ function solve_eom(u₀::SVector{4, Float64},
                    dtmax::Float64)
     # still inflation, no dissipation
     # callback: terminate when inflation ends
-    condition(u, t, integrator) = (abs(get_ϵ1(u..., p[1], p[4])) >= 1)
+    condition(u, t, integrator) = (abs(get_ϵ1(u..., p[1], 3*(p[4]-2)/(p[4]+2))) >= 1)
     affect!(integrator) = terminate!(integrator)
     cb = DiscreteCallback(condition, affect!)
     prob = ODEProblem(_get_f, u₀, tspan, (p[1], p[2], 0.0, p[4]))
-    sol = solve(prob, Vern9(), isoutofdomain=_H_neg, reltol=1e-15, abstol=1e-15, callback=cb, dtmax=dtmax)
+    sol = @time solve(prob, Vern9(), isoutofdomain=_H_neg, reltol=1e-15, abstol=1e-15, callback=cb, dtmax=dtmax)
     # sol = solve(prob, RK4(), isoutofdomain=_H_neg, reltol=1e-9, abstol=1e-9, callback=cb, dtmax=dtmax)
+    # @info sol[1, end]
     
     # callback: terminate at ρ_ϕ / ρ_tot = 1e-3
     tol = 1e-3
@@ -136,7 +154,7 @@ function solve_eom(u₀::SVector{4, Float64},
     tspan2 = (sol.t[end], tspan[2])
     prob = ODEProblem(_get_f, u₁, tspan2, p)
     # sol2 = solve(prob, Vern9(), isoutofdomain=_H_neg, reltol=1e-15, abstol=1e-15, callback=cb2, dtmax=dtmax, save_start=false)
-    sol2 = solve(prob, RK4(), isoutofdomain=_H_neg, reltol=1e-12, abstol=1e-12, callback=cb2, dtmax=dtmax, save_start=false)
+    sol2 = @time solve(prob, RK4(), isoutofdomain=_H_neg, reltol=1e-12, abstol=1e-12, callback=cb2, dtmax=dtmax, save_start=false, maxiters=1e8)
     # @show sol[3, 1]
     
     Ω_ϕ_end = _Omega_ϕ(sol2.u[end])
@@ -153,7 +171,7 @@ function solve_eom(u₀::SVector{4, Float64},
     @info "Numer of steps in inflation" size(sol.t)[1]
     @info "Number of steps" size(η)[1]
     
-    return get_EOMData(η, ϕ, dϕ, a, ρ_r, p[1], p[3], p[4], a_e)
+    return get_EOMData(η, ϕ, dϕ, a, ρ_r, p[1], p[3], 3 * (p[4]-2)/(p[4] + 2), a_e)
 end
 
 """
@@ -333,14 +351,15 @@ function save_eom_npz(eom::EOMData, data_dir, m_eff)
     "t" => eom.t,
     "w" => eom.w,
     "V" => eom.V,
+    "error" => eom.error,
 
-    "m_eff" => m_eff.(eom.ϕ)
+    "m_eff" => m_eff.(eom.ϕ),
     ))
 end
 
 
 function save_all(u₀, tspan, p, data_dir, m_eff, dtmax)
-    eom_data = @time solve_eom(u₀, tspan, p, dtmax)
+    eom_data = solve_eom(u₀, tspan, p, dtmax)
 
     mkpath(data_dir)
     # serialize for Bogoliubov computation

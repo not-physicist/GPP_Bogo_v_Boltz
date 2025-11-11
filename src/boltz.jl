@@ -89,7 +89,7 @@ function get_four_coeff(num_j, t, V_ρ)
     S = spline(y_int)
     dS = diff(S, Derivative(1))
     mpm2 = @. dS(t[indices[1:end-2]]) / m_tilde[1:end-1]^2
-    display(mpm2)
+    # display(mpm2)
     
     #=
     # check the spline order
@@ -169,9 +169,11 @@ function get_f(eom, k::Vector, model::Symbol)
         
         # to be interpolated as k/a_e H_e
         X = @. a_new[indices[1:end-1]] * m_tilde * j / a_new[1] / H_new[1]
+        # @info "Production of first inflaton oscillation at k/a_e H_e = " X[1]
 
         # correction factor 
         C = @. 1/abs(1 + 1/j * X[1:end-1] * eom.aₑ * H_new[1] / (a_new * H_new)[indices[1:end-2]] * (mpm2))
+        # display(C)
         #=
         if j == 1
             @info "Correction factor:"
@@ -224,7 +226,9 @@ function save_all(num_k, data_dir, model, log_k_i=0, log_k_f=2)
 
     k = @. logspace(log_k_i, log_k_f, num_k)
     f = @time get_f(eom, k, model)
-
+    
+    # display(k)
+    # display(f)
     npzwrite(data_dir * "spec_boltz.npz", Dict(
         "k" => k,
         "f" => f,

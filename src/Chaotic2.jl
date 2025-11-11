@@ -35,12 +35,10 @@ function get_dV(ϕ, m)
     return m^2 * ϕ
 end
 
-function save_eom(m::Float64, Γ::Float64, data_dir)
+function save_eom(m::Float64, T::Float64, data_dir)
     # initial conditions
     ϕᵢ = 6.0
-    # ignore ddϕ and Γ in EOM, take a=1
-    # conformal Hubble
-    # Hᵢ = sqrt(get_V(ϕᵢ, m)/3.)
+    # ignore ddϕ and Γ in EOM, take a_i=1
     dVᵢ = get_dV(ϕᵢ, m)
     Vᵢ = get_V(ϕᵢ, m)
     dϕᵢ = get_dϕ_SR(dVᵢ, Vᵢ, 1.0)
@@ -49,12 +47,11 @@ function save_eom(m::Float64, Γ::Float64, data_dir)
     tspan = (0.0, 1e11)
     _V(x) = get_V(x, m)
     _dV(x) = get_dV(x, m)
-    α = 0
-    p = (_V, _dV, Γ, α)
-    dtmax = 2*π/m / 100
+    n = 2
+    p = (_V, _dV, T, n)
+    dtmax = 2*π/m / 1000
 
     EOMs.save_all(u₀, tspan, p, data_dir, dtmax)
-    # Main.infiltrate(@__MODULE__, Base.@locals, @__FILE__, @__LINE__)
     
     return nothing
 end
@@ -68,30 +65,22 @@ function save_f(num_k=100, data_dir=MODEL_DATA_DIR)
 end
 =#
 
-function save_single(m, Γ, num_k)
-    data_dir = @sprintf "%sm=%.1e-Γ=%.1e/" MODEL_DATA_DIR m Γ
+function save_single(m, T, num_k)
+    data_dir = @sprintf "%sm=%.1e-T=%.1e/" MODEL_DATA_DIR m T
     mkpath(data_dir)
     # @info "data_dir = $(data_dir)" 
-    @info "Model parameter (in GeV): " m, Γ
+    @info "Model parameter (in GeV): " m, T
 
-    save_eom(m, Γ, data_dir)
-    PPs.save_all(num_k, data_dir)
-    # Boltzmann.save_all(num_k, data_dir, :quadratic)
+    save_eom(m, T, data_dir)
+    if !isnothing(num_k)
+        PPs.save_all(num_k, data_dir)
+        Boltzmann.save_all(num_k, data_dir, :quadratic)
+    end
 end
 
-function save_all_spec()
-    # m_array = logspace(-4, -6, 3)
-    m_array = [1e-5]
-    Γ_m_array = logspace(-2, -1, 3)
-    num_k = 100
-    # @show m_array, Γ_array, logspace(-3, -1, 3)
-    
-    for m in m_array
-        for Γ_m in Γ_m_array
-            Γ = Γ_m * m
-            save_single(m, Γ, num_k)
-        end
-    end
+function save_single_from_r(r, T, num_k)
+    m = Chaotic2.get_m(r)
+    save_single(m, T, num_k)
 end
 
 # save_eom_test() = save_eom(1e-5, 1e-8, MODEL_DATA_DIR * "test/")

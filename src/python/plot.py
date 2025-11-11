@@ -4,6 +4,10 @@ from matplotlib import colormaps
 import numpy as np
 from scipy.ndimage import gaussian_filter1d
 from scipy.optimize import curve_fit
+    
+from matplotlib import rc
+rc('font',**{'family':'sans-serif','sans-serif':['Helvetica']})
+rc('text', usetex=True)
 
 from os import listdir 
 from os.path import join
@@ -60,12 +64,12 @@ def plot_back_single(dn):
     ax1.plot(N, w_smooth, c="tab:blue", alpha=1.0)
     ax1.set_ylim(-1, 2)
     # ax1.legend()
-    ax1.set_xlabel("$ln(a)$")
+    ax1.set_xlabel(r"$\ln(a)$")
     ax1.set_ylabel(r"$\phi/m_{pl}$")
 
     ax2.plot(N, Omega_r, label=r"$\Omega_r$")
     ax2.plot(N, Omega_ϕ, label=r"$\Omega_{\phi}$")
-    ax2.set_xlabel("$ln(a)$")
+    ax2.set_xlabel(r"$\ln(a)$")
     ax2.set_yscale("log")
     ax2.set_ylim(1e-5, 2)
     ax2.legend()
@@ -89,7 +93,7 @@ def plot_back_single(dn):
     ax.plot(N[N > N_e], rho2_H_ana[N > N_e], color="k", ls="--")
     # ax.plot(N[N > N_e], np.interp(N[N > N_e], ))
     
-    ax.set_xlabel(r"$ln(a)$")
+    ax.set_xlabel(r"$\ln(a)$")
     ax.set_ylabel(r"$\rho_\phi^2 / H$")
     ax.set_yscale("log")
     # ax.set_ylim(1e-24, 1e-11)
@@ -108,10 +112,12 @@ def plot_back_single(dn):
     try:
         m_eff = data["m_eff"]
         fig, ax = plt.subplots()
-        ax.plot(N, m_eff, c="k", label=r"$m_{\text{eff}}$")
-        ax.plot(N[0:-1], np.diff(m_eff)/np.diff(N), c="k", ls="--", label=r"$dm_{\text{eff}}/dN$")
+        ax.plot(N, m_eff, c="k", label=r"$m_{\textrm{eff}}$")
+        # ax.plot(N, m_eff, c="k")
+        ax.plot(N[0:-1], np.diff(m_eff)/np.diff(N), c="k", ls="--", label=r"$dm_{\textrm{eff}}/dN$")
+        # ax.plot(N[0:-1], np.diff(m_eff)/np.diff(N), c="k", ls="--")
 
-        ax.set_xlabel(r"$ln(a)$")
+        ax.set_xlabel(r"$\ln(a)$")
         # ax.set_ylabel(r"$m_{\text{eff}}$")
         ax.legend()
 
@@ -128,12 +134,12 @@ def plot_back_single(dn):
     fig, (ax, ax2) = plt.subplots(ncols=2)
     ax.plot(N, app_a, c="k")
     ax.plot([N[0], N[-1]], [a_e*H_e, a_e*H_e], c="k")
-    ax.set_xlabel(r"$ln(a)$")
+    ax.set_xlabel(r"$\ln(a)$")
     ax.set_ylabel(r"$a''/a$")
     ax.set_yscale("log")
 
     ax2.plot(N, H, c="k")
-    ax2.set_xlabel(r"$ln(a)$")
+    ax2.set_xlabel(r"$\ln(a)$")
     ax2.set_ylabel(r"$H$")
     ax2.set_yscale("log")
     
@@ -233,7 +239,7 @@ def draw_spec(dn, AX, AX2, label_pref, m_phi, Γ, c, ls):
     a_rh = data_eom["a_rh"]
     H = data_eom["H"]
     ρ_ϕ = data_eom["Omega_phi"] * 3 * H**2
-    
+     
     try:
         # try to read out m_eff
         m_eff = data_eom["m_eff"]
@@ -243,8 +249,9 @@ def draw_spec(dn, AX, AX2, label_pref, m_phi, Γ, c, ls):
         f_exact_boltz = formula.get_f_exact_boltz(k, a, ρ_ϕ, H, m_phi, a_e, H_e)
     mask = f_exact_boltz > 1e-15
 
-    AX.plot(k[mask], f_exact_boltz[mask], color="tab:cyan", label="approx. Boltz.")
-    AX.plot(k, n, ls=ls, color="k", label=label_pref+"Bogo.", alpha=0.5)
+    # AX.plot(k[mask], f_exact_boltz[mask], color="tab:cyan", label="approx. Boltz.")
+    # AX.plot(k[mask], f_exact_boltz[mask], color=c, label="approx. Boltz.")
+    AX.plot(k, n, ls=ls, color=c, label=label_pref+"Bogo.", alpha=0.5)
  
     try:
         fn = join(dn, "spec_boltz.npz")
@@ -256,7 +263,7 @@ def draw_spec(dn, AX, AX2, label_pref, m_phi, Γ, c, ls):
         k = data["k"]
         f = data["f"]
         mask = f > 1e-15
-        AX.plot(k[mask], f[mask], color="k", ls="dotted", label=label_pref + "exact Boltz.")
+        AX.plot(k[mask], f[mask], color=c, ls="dotted", label=label_pref + "exact Boltz.")
 
     
     if AX2 is not None:
@@ -337,7 +344,7 @@ def plot_all(dn):
         color = color_array[m_array.index(m)]
         # ls = ls_array[Γm_array.index(round(Γ/m, 4))]
         ls = None
-        draw_spec(full_dn, ax, None, "", m, Γ, color, ls)
+        draw_spec(full_dn, ax, None, "", m, Γ, "k", ls)
   
     ax.set_xlabel(r"$k/a_e H_e$")
     ax.set_ylabel(r"$f=|\beta_k|^2$")
@@ -429,7 +436,7 @@ def plot_comp_chaotic_tmodel():
     fns1 = [x for x in listdir(dn1) if x not in ["test"]]
     dn2 = "../data/TModel-n=2/"
     fns2 = [x for x in listdir(dn2) if x not in ["test"]]
-    # print(fns1, fns2)
+    print(fns1, fns2)
     
     fig, ax = plt.subplots()
     m = 1e-5 
@@ -440,7 +447,7 @@ def plot_comp_chaotic_tmodel():
         m, Γ = fn.replace("m=", "").split("-Γ=")
         m = float(m)
         Γ = float(Γ)
-        if m == 1e-5:
+        if m == 4.6e-6:
             full_dn = join(dn1, fn)
             draw_spec(full_dn, ax, None, "chaotic, ", m, Γ, "k", None)
             draw_n2_H(full_dn, ax2, m, "k", 0)
@@ -462,7 +469,8 @@ def plot_comp_chaotic_tmodel():
     handles, labels = ax.get_legend_handles_labels()
     # print(handles, labels)
     # labels_nodup = list(set(labels))
-    ax.legend(handles=[handles[0], handles[1], handles[6], handles[7]], loc="upper right")
+    ax.legend(handles=[handles[0], handles[1], handles[3], handles[4]], loc="upper right")
+    # ax.legend(loc="upper right")
     
     fig.tight_layout()
     fig.savefig("../figs/spec_comp_chaotic_tmodel.pdf", bbox_inches="tight")
@@ -509,13 +517,12 @@ def plot_all_n():
     Fix the reheating temp also
     """
     r = 0.01 
-    Γ = 1e-9
-    dirs = [f"../data/Chaotic{x}/r={r:.1e}-Γ={Γ:.1e}/" for x in [2, 4, 6]]
-    # dirs = [f"../data/TModel-n={x}/r={r:.1e}-Γ={Γ:.1e}/" for x in [2, 4, 6]]
-    # print(dirs)
-
+    ns = [2, 4, 6]
+    Γs = [1e-8, 1e-10, 1e-12]
     fig, ax = plt.subplots()
-    for dn in dirs:
+    for n, Γ in zip(ns, Γs):
+        dn = f"../data/TModel-n={n}/r={r:.1e}-Γ={Γ:.1e}/"
+
         print(dn)
         plot_back_single(dn)
         plot_spec_single(dn)
@@ -541,44 +548,33 @@ def plot_all_n():
     
     ax.set_xscale("log")
     ax.set_yscale("log")
-    ax.set_xlabel(r"$f/Hz$")
-    ax.set_ylabel(r"$\Omega h^2$")
+    ax.set_ylim((1e-20, 1e-10))
+    ax.set_xlabel(r"$f/\textrm{Hz}$")
+    ax.set_ylabel(r"$\Omega_{\textrm{gw}, 0} h^2$")
     plt.legend()
     plt.savefig("../figs/Omega_all_n.pdf", bbox_inches="tight")
     plt.close()
 
 
 if __name__ == "__main__":
-    # plot_back_single("../data/Chaotic2/test")
-    # plot_spec_single("../data/Chaotic2/test")
-    plot_all("../data/Chaotic2/")
+    ################################## n = 2
+    plot_back_single("../data/TModel-n=2/r=1.0e-02-T=1.0e-04/")
+    plot_spec_single("../data/TModel-n=2/r=1.0e-02-T=1.0e-04/")
+    # plot_all("../data/Chaotic2/")
 
     # check_H("../data/Chaotic2/m=1.0e-04-Γ=1.0e-07/")
     # check_H("../data/Chaotic2/m=1.0e-05-Γ=1.0e-06/")
 
     # plot_all("../data/TModel-n=2/")
-    # plot_back_single("../data/TModel-n=2/r=1.0e-02-Γ=1.0e-07/")
-    # plot_spec_single("../data/TModel-n=2/r=1.0e-02-Γ=1.0e-07/")
-    # plot_back_single("../data/TModel-n=6/r=1.0e-02-Γ=1.0e-10/")
-    # plot_spec_single("../data/TModel-n=6/r=1.0e-02-Γ=1.0e-10/")
-    # plot_back_single("../data/TModel-n=6/r=1.0e-02-Γ=1.0e-08/")
-    # plot_spec_single("../data/TModel-n=6/r=1.0e-02-Γ=1.0e-08/")
-
+    
     # plot_comp_chaotic_tmodel()
-    # check_H("../data/TModel-n=2/r=4.5e-03-Γ=1.0e-06/")
-
-    # plot_back_single("../data/Chaotic4/r=4.5e-03-Γ=1.0e-10")
-    # plot_back_single("../data/Chaotic4/r=4.5e-03-Γ=1.0e-11")
-    # plot_back_single("../data/Chaotic4/r=4.5e-03-Γ=1.0e-12")
-    # plot_back_single("../data/Chaotic4/test")
-    # plot_spec_single("../data/Chaotic4/test")
+    
+    ################################### n = 4
     # plot_all("../data/Chaotic4/")
-
-    # plot_k_every("../data/Chaotic4/r=4.5e-03-Γ=1.0e-10/")
-    # plot_k_every("../data/Chaotic4/r=1.0e-03-Γ=1.0e-10/")
-    # plot_k_every("../data/Chaotic4/r=4.5e-04-Γ=1.0e-10/")
-    # plot_k_every("../data/Chaotic2/test/")
-
+    
+    # plot_all("../data/TModel-n=4/")
+    
+    ################################### n = 6
     # plot_back_single("../data/Chaotic6/r=4.5e-03-Γ=1.0e-12")
     # plot_back_single("../data/Chaotic6/r=4.5e-03-Γ=1.0e-10")
     # plot_all("../data/Chaotic6/")

@@ -67,7 +67,7 @@ end
 ϕᵢ: in unit of ϕₑ (field value at end of slow roll)
 init_time_mul: initial (conformal) time multiplicant; needs to make the simulation run longer for large r 
 """
-function save_eom(ϕᵢ, r, Γ, n, data_dir::String)
+function save_eom(ϕᵢ, r, T, n, data_dir::String)
     # mkpath(data_dir)
 
     model = TModels(n, 0.974, r, ϕᵢ)
@@ -81,18 +81,18 @@ function save_eom(ϕᵢ, r, Γ, n, data_dir::String)
 
     # @info "Initial conditions are: ", ϕᵢ, dϕᵢ
     u₀ = SA[ϕᵢ, dϕᵢ, 1.0, 0.0]
-    tspan = (0.0, 1e10)
+    tspan = (0.0, 1e12)
 
     # parameters
     _V(x) = get_V(x, model)
     _dV(x) = get_dV(x, model)
     _m_eff(x) = get_m_eff(x, model)
-    α = 3 * (n-2)/(n+2)
-    p = (_V, _dV, Γ, α)
+    # α = 3 * (n-2)/(n+2)
+    p = (_V, _dV, T, n)
     if n == 2 
         dtmax = 1/get_m_eff(0.0, model)/200
     elseif n == 4 || n == 6
-        dtmax = 1/(10*sqrt(get_λ(model))*2*sqrt(3)) / 20000
+        dtmax = 1/(10*sqrt(get_λ(model))*2*sqrt(3)) / 100000
     end
     @show dtmax
     
@@ -105,31 +105,33 @@ end
 # save_eom_benchmark() = save_eom(3.6, 0.0045, 1e-7, 2)
 # save_f_benchmark() = PPs.save_all(100, MODEL_DATA_DIR*"0.0045/")
 
-function save_single(ϕᵢ, r, Γ, n, num_k, k_min=-2, k_max=2)
-    data_dir = @sprintf "%s-n=%i/r=%.1e-Γ=%.1e/" MODEL_DATA_DIR n r Γ
+function save_single(ϕᵢ, r, T, n, num_k, k_min=-2, k_max=2)
+    data_dir = @sprintf "%s-n=%i/r=%.1e-T=%.1e/" MODEL_DATA_DIR n r T
     @info data_dir
     mkpath(data_dir)
-    @info "Model parameter (in GeV): " r, Γ
-
-    save_eom(ϕᵢ, r, Γ, n, data_dir)
+    @info "Model parameter (in GeV): " r, T
+    
+    save_eom(ϕᵢ, r, T, n, data_dir)
     if !isnothing(num_k)
         PPs.save_all(num_k, data_dir, k_min, k_max)
+        if n == 2
+            Boltzmann.save_all(num_k, data_dir, :quadratic)
+        end
     end
-    Boltzmann.save_all(num_k, data_dir, :quadratic)
 end
 
-function save_all_spec()
-    r_array = [0.0045]
-    Γ_array = logspace(-8, -6, 3)
-    num_k = 100
-    n = 2
-
-    for r in r_array 
-        for Γ in Γ_array
-            save_single(ϕᵢ, r, Γ, n, num_k)
-        end 
-    end 
-    return nothing
-end
+# function save_all_spec()
+#     r_array = [0.0045]
+#     Γ_array = logspace(-8, -6, 3)
+#     num_k = 100
+#     n = 2
+#
+#     for r in r_array 
+#         for Γ in Γ_array
+#             save_single(ϕᵢ, r, Γ, n, num_k)
+#         end 
+#     end 
+#     return nothing
+# end
 
 end
