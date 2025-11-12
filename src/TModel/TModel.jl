@@ -91,8 +91,10 @@ function save_eom(ϕᵢ, r, T, n, data_dir::String)
     p = (_V, _dV, T, n)
     if n == 2 
         dtmax = 1/get_m_eff(0.0, model)/200
-    elseif n == 4 || n == 6
+    elseif n == 4
         dtmax = 1/(10*sqrt(get_λ(model))*2*sqrt(3)) / 100000
+    elseif n == 6
+        dtmax = 1/(10*sqrt(get_λ(model))*2*sqrt(3)) / 500000
     end
     @show dtmax
     

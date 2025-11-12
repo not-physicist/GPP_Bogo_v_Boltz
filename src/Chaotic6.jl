@@ -67,7 +67,7 @@ function save_single(r, Γ, num_k)
 
     save_eom(l, Γ, data_dir)
     PPs.save_all(num_k, data_dir, -1, 2)
-    # Boltzmann.save_all(num_k, data_dir, :sextic, 0, 2)
+    Boltzmann.save_all(num_k, data_dir, :sextic, 0, 2)
 end
 
 function save_all_spec()

@@ -58,21 +58,21 @@ def plot_back_single(dn):
     ax1.plot(N, phi, c="k")
     # w = get_eos(a, H)
     w = data["w"]
-    w_smooth = gaussian_filter1d(w, 50)
+    w_smooth = gaussian_filter1d(w, w.size/1000)
     # print(w_smooth[::100])
     ax1.plot(N, w, c="tab:blue", alpha=0.3)
     ax1.plot(N, w_smooth, c="tab:blue", alpha=1.0)
     ax1.set_ylim(-1, 2)
     # ax1.legend()
     ax1.set_xlabel(r"$\ln(a)$")
-    ax1.set_ylabel(r"$\phi/m_{pl}$")
+    ax1.set_ylabel(r"$\phi/m_\textrm{pl}$")
 
     ax2.plot(N, Omega_r, label=r"$\Omega_r$")
     ax2.plot(N, Omega_ϕ, label=r"$\Omega_{\phi}$")
     ax2.set_xlabel(r"$\ln(a)$")
     ax2.set_yscale("log")
     ax2.set_ylim(1e-5, 2)
-    ax2.legend()
+    ax2.legend(loc="lower left")
 
     plt.tight_layout()
     out_dn = dn.replace("data", "figs")
@@ -160,7 +160,6 @@ def plot_back_single(dn):
     fig_fn = join(out_dn, "error.pdf")
     plt.savefig(fig_fn, bbox_inches="tight")
     plt.close()
-
 
 
 def plot_spec_single(dn):
@@ -557,9 +556,12 @@ def plot_all_n():
 
 
 if __name__ == "__main__":
+    dn = "../data/TModel-n=6/r=1.0e-02-T=1.0e-05/"
+    # plot_back_single(dn)
+    # plot_spec_single(dn)
+    plot_all(dn)
+
     ################################## n = 2
-    plot_back_single("../data/TModel-n=2/r=1.0e-02-T=1.0e-04/")
-    plot_spec_single("../data/TModel-n=2/r=1.0e-02-T=1.0e-04/")
     # plot_all("../data/Chaotic2/")
 
     # check_H("../data/Chaotic2/m=1.0e-04-Γ=1.0e-07/")
@@ -570,10 +572,8 @@ if __name__ == "__main__":
     # plot_comp_chaotic_tmodel()
     
     ################################### n = 4
-    # plot_all("../data/Chaotic4/")
-    
+    # plot_all("../data/Chaotic4/") 
     # plot_all("../data/TModel-n=4/")
-    
     ################################### n = 6
     # plot_back_single("../data/Chaotic6/r=4.5e-03-Γ=1.0e-12")
     # plot_back_single("../data/Chaotic6/r=4.5e-03-Γ=1.0e-10")

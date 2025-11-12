@@ -85,11 +85,12 @@ function get_four_coeff(num_j, t, V_ρ)
     end
     # Use spline to get interpolation of derivative correctly
     # see: https://discourse.julialang.org/t/best-way-to-take-derivatives-of-unevenly-spaced-data-with-interpolations-discrete-derivatives/54097/6
-    y_int = BSplineKit.interpolate(t[indices[1:end-1]], m_tilde, BSplineOrder(4))
-    S = spline(y_int)
-    dS = diff(S, Derivative(1))
-    mpm2 = @. dS(t[indices[1:end-2]]) / m_tilde[1:end-1]^2
+    # y_int = BSplineKit.interpolate(t[indices[1:end-1]], m_tilde, BSplineOrder(4))
+    # S = spline(y_int)
+    # dS = diff(S, Derivative(1))
+    # mpm2 = @. dS(t[indices[1:end-2]]) / m_tilde[1:end-1]^2
     # display(mpm2)
+    mpm2 = get_deriv_BSpline(t[indices[1:end-1]], m_tilde) ./ m_tilde .^2 
     
     #=
     # check the spline order
@@ -172,7 +173,7 @@ function get_f(eom, k::Vector, model::Symbol)
         # @info "Production of first inflaton oscillation at k/a_e H_e = " X[1]
 
         # correction factor 
-        C = @. 1/abs(1 + 1/j * X[1:end-1] * eom.aₑ * H_new[1] / (a_new * H_new)[indices[1:end-2]] * (mpm2))
+        C = @. 1/abs(1 + 1/j * X * eom.aₑ * H_new[1] / (a_new * H_new)[indices[1:end-1]] * (mpm2))
         # display(C)
         #=
         if j == 1
@@ -182,18 +183,18 @@ function get_f(eom, k::Vector, model::Symbol)
         end
         =#
 
-        Y = n2_H[1:end-1] .* C
+        Y = n2_H .* C
 
         if model == :quadratic
-            n2_H_dense = Interpolate(X[1:end-1], Y, extrapolate=LinearInterpolations.Constant(0.0)).(k)
+            n2_H_dense = Interpolate(X, Y, extrapolate=LinearInterpolations.Constant(0.0)).(k)
             f += n2_H_dense
         elseif model == :quartic
             n2_H_dense = Interpolate(X[1:argmax(X)], Y[1:argmax(X)], extrapolate=LinearInterpolations.Constant(0.0)).(k)
             f += n2_H_dense
-            f += Interpolate(X[end-1:-1:argmax(X)], Y[end:-1:argmax(X)], extrapolate=LinearInterpolations.Constant(0.0)).(k)
+            f += Interpolate(X[end:-1:argmax(X)], Y[end:-1:argmax(X)], extrapolate=LinearInterpolations.Constant(0.0)).(k)
         elseif model == :sextic
             sort_ind = sortperm(X[1:end-1])
-            f += Interpolate((X[1:end-1])[sort_ind], Y[sort_ind], extrapolate=LinearInterpolations.Constant(0.0)).(k)
+            f += Interpolate(X[sort_ind], Y[sort_ind], extrapolate=LinearInterpolations.Constant(0.0)).(k)
         else
             return ArgumentError("Model not implemented!")
         end

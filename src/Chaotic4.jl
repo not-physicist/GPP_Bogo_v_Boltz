@@ -34,7 +34,7 @@ function get_l(r)
     return TModel.get_λ(tmodel)
 end
 
-function save_eom(l, Γ, data_dir)
+function save_eom(l, T, data_dir)
     ϕᵢ = 9.0
     dVᵢ = get_dV(ϕᵢ, l)
     Vᵢ = get_V(ϕᵢ, l)
@@ -46,8 +46,8 @@ function save_eom(l, Γ, data_dir)
     _V(x) = get_V(x, l)
     _dV(x) = get_dV(x, l)
 
-    α = 1.0
-    p = (_V, _dV, Γ, α)
+    n = 4
+    p = (_V, _dV, T, n)
 
     # order of magnitude estimate for oscillation frequency
     ωStar = 10 * sqrt(l) * 2 * sqrt(3) 
@@ -62,19 +62,22 @@ end
 test_eom() = save_eom(get_l(0.001), 1e-8, MODEL_DATA_DIR * "test/")
 test_spec() = PPs.save_all(100, MODEL_DATA_DIR * "test/")
 
-function save_single(r, Γ, num_k)
-    data_dir = @sprintf "%sr=%.1e-Γ=%.1e/" MODEL_DATA_DIR r Γ 
+function save_single(r, T, num_k)
+    data_dir = @sprintf "%sr=%.1e-T=%.1e/" MODEL_DATA_DIR r T 
     @info data_dir
     mkpath(data_dir)
 
     l = get_l(r)
-    @info "Model parameter (in GeV): " l, Γ
+    @info "Model parameter (in GeV): " l, T
 
-    save_eom(l, Γ, data_dir)
-    PPs.save_all(num_k, data_dir, -2, 2)
-    # Boltzmann.save_all(num_k, data_dir, :quartic, 0, 2)
+    save_eom(l, T, data_dir)
+    if !isnothing(num_k)
+        PPs.save_all(num_k, data_dir, -2, 2)
+        Boltzmann.save_all(num_k, data_dir, :quartic, 0, 1)
+    end
 end
 
+#=
 function save_all_spec()
     r_array = [0.0045] 
     # Γ_array = [1e-10, 1e-11, 1e-12]
@@ -91,5 +94,6 @@ function save_all_spec()
         end
     end
 end
+=#
 
 end

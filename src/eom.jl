@@ -11,12 +11,10 @@ using StaticArrays, OrdinaryDiffEq, Logging, NPZ, Serialization, NumericalIntegr
 
 const gStar = 106.75 
 
-# BUG: something wrong with the solver
-# related to changing p[4] from α to n
-
 # TODO: background solution not very good in the end
-# seen from errors in a''/a
+# as seen from errors in a''/a
 # maybe use the 2nd Friedmann as constraint
+
 """
 energy density of inflaton field
 in conformal time (dϕ = dϕdτ)
@@ -38,6 +36,7 @@ equation of state
 """
 function get_eos(ϕ, dϕ, a, V, ρ_r, α)
     return (get_p_ϕ(ϕ, dϕ, a, V, α) + ρ_r/3)/(get_ρ_ϕ(ϕ, dϕ, a, V, α) + ρ_r)
+    # return (get_p_ϕ(ϕ, dϕ, a, V, α))/(get_ρ_ϕ(ϕ, dϕ, a, V, α))
 end
 
 """
@@ -180,8 +179,9 @@ Compute the error of ODE solution by comparing a''/a from two methods
     - from simply doing the derivatives
 """
 function get_error(app_a, a, τ)
-    app_a_deriv = diff(diff(a) ./ diff(τ)) ./ diff(τ[1:end-1]) ./ a[1:end-2]
-    error = @. (app_a[1:end-2] - app_a_deriv) / app_a[1:end-2]
+    # app_a_deriv = diff(diff(a) ./ diff(τ)) ./ diff(τ[1:end-1]) ./ a[1:end-2]
+    app_a_deriv = get_deriv_BSpline(τ[1:end-1], get_deriv_BSpline(τ[1:end-1], a[1:end-1])) ./ a[1:end-1]
+    error = @. (app_a[1:end-1] - app_a_deriv) / app_a[1:end-1]
     return error
 end
 
@@ -205,19 +205,21 @@ function get_EOMData(η, ϕ, dϕ, a, ρ_r, V, Γ, α, a_e)
     # a''/a (wrt conformal time τ) according to second Friedmann
     app_a = @. get_app_a_conf(ϕ, dϕ, a, ρ_r, V, α)
     # (a''/a)'
-    app_a_p = diff(app_a[1:end-1]) ./ diff(τ[1:end-1])
+    # app_a_p = diff(app_a[1:end-1]) ./ diff(τ[1:end-1])
+    app_a_p = get_deriv_BSpline(τ[1:end-1], app_a[1:end-1])[1:end-1]
 
     Ω_r = @. ρ_r/(3*H^2)
     Ω_ϕ = @. ρ_ϕ/(3*H^2)
 
     H_e = interpolate(a, H, a_e)
     # @info a_e, H_e, log(a_e)
-
-    dec_index = findfirst(x -> x <= 2/3*Γ, H)
+    
+    # dec_index = findfirst(x -> x <= 2/3*Γ, H)
     # a_rh = a[dec_index]
+    rh_index = findfirst(Ω_r .> Ω_ϕ)
     a_rh = try
         # reheating scale factor
-        a[dec_index]
+        a[rh_index]
     catch e
         @warn "Scalar factor at reheating not found! %f"
         a[end]
@@ -229,13 +231,15 @@ function get_EOMData(η, ϕ, dϕ, a, ρ_r, V, Γ, α, a_e)
     V = @. V(ϕ)
     error = get_error(app_a, a, τ)
 
+
+    # @info size(η), size(app_a_p), size(error)
     # now need to discard the last two elements
     # as app_a_p has two less entries
     return EOMData(η[1:end-2], τ[1:end-2], t[1:end-2],
             ϕ[1:end-2], dϕ[1:end-2], 
             a[1:end-2], app_a[1:end-2], app_a_p,
             H[1:end-2], Ω_r[1:end-2], Ω_ϕ[1:end-2],
-            a_e, a_rh, H_e, w[1:end-2], V[1:end-2], error)
+            a_e, a_rh, H_e, w[1:end-2], V[1:end-2], error[1:end-1])
 end
 
 
