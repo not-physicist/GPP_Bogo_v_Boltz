@@ -133,7 +133,10 @@ function solve_diff_mode(k::Real, eom)
     # u₀ = @SVector [1/sqrt(2*k), -1.0im*k/sqrt(2*k)] 
     u₀ = @SVector [1/sqrt(2*ω₀), -1.0im*ω₀/sqrt(2*ω₀)] 
     
-    prob = ODEProblem{false}(get_diff_eq_mode, u₀, tspan, get_ω2)
+    condition(u, t, integrator) = (abs(1-get_ω2(t)/k^2) < 0.00001)
+    affect!(integrator) = terminate!(integrator)
+    cb = DiscreteCallback(condition, affect!)
+    prob = ODEProblem{false}(get_diff_eq_mode, u₀, tspan, get_ω2, callback=cb)
     sol = solve(prob, Vern9(), reltol=1e-12, abstol=1e-12, save_everystep=false, isoutofdomain=get_wronskian_domain, maxiters=1e7)
     χₑ = sol[1, end]
     ∂χₑ = sol[2, end]
