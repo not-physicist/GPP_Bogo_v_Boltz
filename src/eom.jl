@@ -170,7 +170,7 @@ function solve_eom(u₀::SVector{4, Float64},
     @info "Numer of steps in inflation" size(sol.t)[1]
     @info "Number of steps" size(η)[1]
     
-    return get_EOMData(η, ϕ, dϕ, a, ρ_r, p[1], p[3], 3 * (p[4]-2)/(p[4] + 2), a_e)
+    return get_EOMData(η, ϕ, dϕ, a, ρ_r, p[1], 3 * (p[4]-2)/(p[4] + 2), a_e)
 end
 
 """
@@ -188,7 +188,7 @@ end
 """
 from ODEsolution get ODEData
 """
-function get_EOMData(η, ϕ, dϕ, a, ρ_r, V, Γ, α, a_e)
+function get_EOMData(η, ϕ, dϕ, a, ρ_r, V, α, a_e)
     # max_ind = argmaxima(ϕ)
     # @info diff(log10.(diff(η[max_ind])))
     

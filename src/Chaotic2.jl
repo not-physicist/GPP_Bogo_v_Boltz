@@ -74,7 +74,7 @@ function save_single(m, T, num_k)
     save_eom(m, T, data_dir)
     if !isnothing(num_k)
         PPs.save_all(num_k, data_dir)
-        Boltzmann.save_all(num_k, data_dir, :quadratic)
+        Boltzmann.save_all(num_k, data_dir, :quadratic, 0, 2, true)
     end
 end
 

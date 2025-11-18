@@ -64,7 +64,7 @@ function solve_all_spec_alpha(k::Vector, eom)
     β = zeros(ComplexF64, size(k)) 
     ω = zeros(ComplexF64, size(k)) 
 
-    Threads.@threads for i in eachindex(k)
+    Threads.@threads for i in ProgressBar(eachindex(k))
         p = get_p_alpha(k[i], eom.τ, eom.app_a, eom.app_a_p)
         
         tspan = [eom.τ[1], eom.τ[end]]
@@ -155,7 +155,7 @@ function solve_all_spec(k::Vector, eom)
     ρ = zeros(size(k))
     err = zeros(size(k))
 
-    @inbounds Threads.@threads for i in eachindex(k)
+    @inbounds Threads.@threads for i in ProgressBar(eachindex(k))
         @inbounds res = solve_diff_mode(k[i], eom)
         @inbounds n[i], ρ[i], err[i] = res
         # @show res

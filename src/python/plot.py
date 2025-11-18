@@ -179,6 +179,17 @@ def plot_spec_single(dn):
     ax.plot(k, ρ, label=r"$\rho_k$")
     ax.plot(k, error, label="error")
 
+    try:
+        fn = join(dn, "spec_boltz.npz")
+        # print(fn)
+        data = np.load(fn)
+    except:
+        print("No boltzmann resutls found. SKIPPING...")
+    else:
+        k_boltz = data["k"]
+        f_boltz = data["f"]
+        mask = f_boltz > 1e-15
+        ax.plot(k_boltz[mask], f_boltz[mask], color="k", ls="dotted", label="exact Boltz.")
 
     """
     get power index for the IR end (if exists)
@@ -207,12 +218,31 @@ def plot_spec_single(dn):
     ax.set_xscale("log")
     ax.set_yscale("log")
     ax.set_ylim((1e-15, 1e1))
-    ax.legend()
+    ax.legend(loc="lower left")
 
     fig.tight_layout()
     out_dn = dn.replace("data", "figs")
     Path(out_dn).mkdir(parents=True, exist_ok=True)
     fig_fn = join(out_dn, "specs.pdf")
+    fig.savefig(fig_fn, bbox_inches="tight")
+    plt.close(fig=fig)
+
+    fig, ax = plt.subplots(figsize=(4, 3))
+
+    ax.plot(k, n, label="Bogo.", color="k")
+    ax.plot(k_boltz[mask], f_boltz[mask], color="k", ls="dotted", label="exact Boltz.")
+    ax.set_xlabel("$k/a_e H_e$")
+    ax.set_ylabel(r"$|\beta_k|^2$")
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.set_xlim((1, 1e2))
+    ax.set_ylim((1e-15, 1e1))
+    ax.legend(loc="upper right")
+
+    fig.tight_layout()
+    out_dn = dn.replace("data", "figs")
+    Path(out_dn).mkdir(parents=True, exist_ok=True)
+    fig_fn = join(out_dn, "f.pdf")
     fig.savefig(fig_fn, bbox_inches="tight")
     plt.close(fig=fig)
 
@@ -321,12 +351,11 @@ def plot_all(dn):
     for fn in fns:
         # print(fn)
         if "m=" in fn:
-            m, Γ = fn.replace("m=", "").split("-Γ=")
+            m, T = fn.replace("m=", "").split("-T=")
         elif "r=" in fn:
-            m, Γ = fn.replace("r=", "").split("-Γ=")
+            m, T = fn.replace("r=", "").split("-T=")
         m = float(m)
-        Γ = float(Γ)
-        # BUG: possibly problematic for Chaotic4 and so on
+        Γ = float(T)
 
         full_dn = join(dn, fn)
         plot_back_single(full_dn)
@@ -517,14 +546,15 @@ def plot_all_n():
     """
     r = 0.01 
     ns = [2, 4, 6]
-    Γs = [1e-8, 1e-10, 1e-12]
-    fig, ax = plt.subplots()
-    for n, Γ in zip(ns, Γs):
-        dn = f"../data/TModel-n={n}/r={r:.1e}-Γ={Γ:.1e}/"
+    Ts = [1e-5, 1e-5, 1e-5]
 
-        print(dn)
-        plot_back_single(dn)
-        plot_spec_single(dn)
+    fig, ax = plt.subplots()
+    for n, T in zip(ns, Ts):
+        dn = f"../data/TModel-n={n}/r={r:.1e}-T={T:.1e}/"
+
+        # print(dn)
+        # plot_back_single(dn)
+        # plot_spec_single(dn)
 
         fn = join(dn, "eom.npz")
         data = np.load(fn)
@@ -539,8 +569,8 @@ def plot_all_n():
         k = data["k"]
         ρ = data["rho"]
 
-        f = formula.get_f(k, a_e/a_rh, H_e, Γ)
-        Ω = formula.get_Ω_gw0(ρ, a_e/a_rh, H_e, Γ)
+        f = formula.get_f(k, a_e/a_rh, H_e, T)
+        Ω = formula.get_Ω_gw0(ρ, a_e/a_rh, H_e, T)
     
         n = dn.split("/")[2][-1]
         ax.plot(f, Ω, label=f"$n={n}$")
@@ -554,12 +584,118 @@ def plot_all_n():
     plt.savefig("../figs/Omega_all_n.pdf", bbox_inches="tight")
     plt.close()
 
+def compare_k_rh():
+    Ts = [1e-04, 1e-05]
+    labels = [r"$10^{-4} m_\textrm{pl}$", r"$10^{-5} m_\textrm{pl}$"]
+    # print(dn)
+
+    fig, ax = plt.subplots(figsize=(4,3))
+    for (T, label) in zip(Ts, labels):
+        dn = f"../data/TModel-n=2/r=1.0e-02-T={T:.1e}/"
+        fn = join(dn, "spec_bogo.npz")
+        data = np.load(fn)
+        # print(data)
+
+        k = data["k"]
+        ρ = data["rho"]
+        # n = data["n"]
+
+        ax.plot(k, ρ, label=label)
+
+        data = np.load(join(dn, "eom.npz"))
+        a_rh = data["a_rh"]
+        a_e = data["a_e"]
+        H_e = data["H_e"]
+
+        a = data["a"]
+        H = data["H"]
+        H_rh = np.interp(a_rh, a, H)
+        k_rh = a_rh * H_rh / a_e / H_e
+        ax.plot([k_rh, k_rh], [1e-10, 1], color="gray", ls="--")
+
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.set_xlabel("$k/a_eH_e$")
+    ax.set_ylabel(r"$|\beta_k|^2 k^4/\pi^2 $")
+    
+    ax.legend(loc="upper right")
+    fig.tight_layout()
+    fig_fn = join("../figs/TModel-n=2/", "spec_k_rh.pdf")
+    fig.savefig(fig_fn, bbox_inches="tight")
+    plt.close(fig=fig)
+
+
+def plot_Boltzmann_single_j(dn):
+    """
+    plot Boltzmann spectrum but to each Fourier modes
+    """
+    fns = [x for x in listdir(dn) if "spec_boltz" in x]
+    print(fns)
+
+    fig, ax = plt.subplots()
+    for fn in fns:
+        data = np.load(join(dn, fn))
+        try:
+            k = data["X"]
+            f = data["Y"]
+            ax.plot(k, f, alpha=0.5, marker="+")
+            popt, pcov = curve_fit(lambda x, a, b: a*x + b, np.log(k[0:4]), np.log(f[0:4]))
+            popt2, pcov2 = curve_fit(lambda x, a, b: a*x + b, np.log(k[-100:]), np.log(f[-100:]))
+            print(popt, popt2)
+
+        except KeyError:
+            ax.plot(data["k"], data["f"], label=r"$\Sigma$", color="k")
+
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    
+    out_dn = dn.replace("data", "figs")
+    fig_fn = join(out_dn, "spec_boltz_singles.pdf")
+    ax.legend(loc="lower left")
+    plt.savefig(fig_fn, bbox_inches="tight") 
+    plt.close()
+
+def plot_mtilde(dn):
+    fn = join(dn, "eom.npz")
+    data = np.load(fn)
+    N = np.log(data["a"])
+    H = data["H"]
+    Ωphi = data["Omega_phi"]
+    ρphi = 3 * H**2 * Ωphi
+
+    data = np.load(join(dn, "m_tilde.npz"))
+    m = data["m"]
+    a_n = data["a"]
+    
+    # WARNING: only for n=6 now
+    T = 1e-05 
+    n = 6
+    Γ = (7-n) / (np.sqrt(3)*n) * T**(4/n) * (30/106/np.pi**2)**(-1/n) * ρphi**(1/2 - 1/n)
+
+    fig, ax = plt.subplots()
+    ax.plot(N, H, label="$H$")
+    ax.plot(N, Γ, label="$\Gamma$")
+    ax.plot(np.log(a_n)[:-1], m, label=r"$\tilde{m}$", marker="+")
+
+    ax.set_yscale("log")
+    ax.set_xlabel("$N$")
+    
+    out_dn = dn.replace("data", "figs")
+    fig_fn = join(out_dn, "mtilde.pdf")
+    ax.legend(loc="lower left")
+    plt.savefig(fig_fn, bbox_inches="tight") 
+    plt.close()
+
 
 if __name__ == "__main__":
-    dn = "../data/TModel-n=6/r=1.0e-02-T=1.0e-05/"
+    # dn = "../data/TModel-n=2/r=1.0e-02-T=1.0e-05/"
+    # dn = "../data/Chaotic2/m=4.6e-06-T=1.0e-04/"
+    dn = "../data/Chaotic6/r=1.0e-02-T=1.0e-05/"
     # plot_back_single(dn)
     # plot_spec_single(dn)
-    plot_all(dn)
+    # plot_all(dn)
+    # plot_Boltzmann_single_j(dn)
+    plot_mtilde(dn)
 
     ################################## n = 2
     # plot_all("../data/Chaotic2/")
@@ -580,3 +716,4 @@ if __name__ == "__main__":
     # plot_all("../data/Chaotic6/")
 
     # plot_all_n()
+    # compare_k_rh()

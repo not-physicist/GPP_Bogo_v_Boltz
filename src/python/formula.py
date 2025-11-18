@@ -12,7 +12,7 @@ def get_T_rh(Γ):
     # print(T)
     return T
 
-def get_f(k, a_e_rh, H_e, Γ):
+def get_f(k, a_e_rh, H_e, T):
     """
     calculate current GW frequency from 
     k = k/a_e H_e 
@@ -21,15 +21,15 @@ def get_f(k, a_e_rh, H_e, Γ):
     returns frequency in hertz
     """
     # return 1.80e10 * k * a_e_rh * H_e * Γ**(-1/2)
-    return 18.8e9 * k * a_e_rh * H_e / get_T_rh(Γ)
+    return 18.8e9 * k * a_e_rh * H_e / T
 
-def get_Ω_gw0(ρ, a_e_rh, H_e, Γ):
+def get_Ω_gw0(ρ, a_e_rh, H_e, T):
     """
     calculate current GW energy parameter
     ρ = a0^4 ρ / a_e^4 H_e^4
     """
     # return 3.83e-14 * ρ * a_e_rh**4 * H_e**4 * Γ**(-2)
-    return 0.37 * ρ * a_e_rh**4 * (H_e/get_T_rh(Γ))**4
+    return 0.37 * ρ * a_e_rh**4 * (H_e/T)**4
 
 #####################################################################
 

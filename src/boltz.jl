@@ -7,7 +7,7 @@ module Boltzmann
 # using CubicSplines: extrapolate
 using ..Commons
 
-using LinearInterpolations, NumericalIntegration, Peaks, Statistics, Serialization, NPZ, QuadGK
+using LinearInterpolations, NumericalIntegration, Peaks, Statistics, Serialization, NPZ, QuadGK, ProgressBars
 using BSplineKit 
 using CurveFit
 
@@ -50,13 +50,21 @@ function get_four_coeff(num_j, t, V_ρ)
     indices = argminima(V_ρ)
     N = size(indices)[1] - 1
     
+    # only keep first 50 oscillations
+    # if N > 200
+    #     indices = indices[1:200]
+    #     N = size(indices)[1] - 1
+    # end
+
+    @info "How many minima: " size(indices)
+    
     if any(x -> x < num_j, diff(indices))
         @warn "Number of points in one period could be lower than num_j; Fourier series should not be trusted in this case!" diff(indices) num_j
     end
 
     m_tilde = zeros(Float64, (N,))
     c_n = zeros(Float64, (N, num_j))
-    Threads.@threads for i in 1:N 
+    Threads.@threads for i in ProgressBar(1:N)
         i1 = indices[i]
         i2 = indices[i+1]
     
@@ -83,13 +91,6 @@ function get_four_coeff(num_j, t, V_ρ)
         # Looks good!
         =#
     end
-    # Use spline to get interpolation of derivative correctly
-    # see: https://discourse.julialang.org/t/best-way-to-take-derivatives-of-unevenly-spaced-data-with-interpolations-discrete-derivatives/54097/6
-    # y_int = BSplineKit.interpolate(t[indices[1:end-1]], m_tilde, BSplineOrder(4))
-    # S = spline(y_int)
-    # dS = diff(S, Derivative(1))
-    # mpm2 = @. dS(t[indices[1:end-2]]) / m_tilde[1:end-1]^2
-    # display(mpm2)
     mpm2 = get_deriv_BSpline(t[indices[1:end-1]], m_tilde) ./ m_tilde .^2 
     
     #=
@@ -108,13 +109,14 @@ function get_four_coeff(num_j, t, V_ρ)
     return N, indices, m_tilde, c_n, mpm2
 end
 
+
 """
 compute the Boltzmann phase space distribution
 decompose the oscillations of inflaton into fourier series
 
 k in unit of aₑHₑ
 """
-function get_f(eom, k::Vector, model::Symbol)
+function get_f(eom, k::Vector, model::Symbol, dn_single=nothing)
     # how many fourier modes to compute
     # for n=2, it doesn't need to be very large
     if model == :quadratic
@@ -185,6 +187,11 @@ function get_f(eom, k::Vector, model::Symbol)
 
         Y = n2_H .* C
 
+        if !isnothing(dn_single) && j <= 5
+            fn = dn_single * "spec_boltz_j=$j.npz"
+            npzwrite(fn, Dict("X" => X, "Y" => Y))
+        end
+
         if model == :quadratic
             n2_H_dense = Interpolate(X, Y, extrapolate=LinearInterpolations.Constant(0.0)).(k)
             f += n2_H_dense
@@ -199,7 +206,7 @@ function get_f(eom, k::Vector, model::Symbol)
             return ArgumentError("Model not implemented!")
         end
     end
-    return f
+    return f, a_new[indices], m_tilde
     
     #=
     # To get uninterpolated spectrum
@@ -221,12 +228,16 @@ function get_f(eom, k::Vector, model::Symbol)
     =#
 end
 
-function save_all(num_k, data_dir, model, log_k_i=0, log_k_f=2)
+function save_all(num_k, data_dir, model, log_k_i=0, log_k_f=2, single=false)
     @info data_dir
     eom = deserialize(data_dir * "eom.dat")
 
     k = @. logspace(log_k_i, log_k_f, num_k)
-    f = @time get_f(eom, k, model)
+    if single
+        f, a, m = @time get_f(eom, k, model, data_dir)
+    else
+        f, a, m = @time get_f(eom, k, model)
+    end
     
     # display(k)
     # display(f)
@@ -234,6 +245,12 @@ function save_all(num_k, data_dir, model, log_k_i=0, log_k_f=2)
         "k" => k,
         "f" => f,
     ))
+
+    npzwrite(data_dir * "m_tilde.npz", Dict(
+        "a" => a,
+        "m" => m,
+    ))
+
     return nothing
 end
 end

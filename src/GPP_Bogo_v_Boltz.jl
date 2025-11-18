@@ -28,12 +28,12 @@ using .Chaotic6
 export Chaotic6 
 
 function save_all_TModel()
-    num_k = 100
+    num_k = 200
     r = 0.01
 
-    TModel.save_single(5.0, r, 1e-8, 2, num_k)
-    TModel.save_single(5.5, r, 1e-10, 4, num_k)
-    TModel.save_single(6.5, r, 1e-12, 6, num_k)
+    TModel.save_single(5.0, r, 1e-4, 2, num_k)
+    TModel.save_single(5.5, r, 1e-5, 4, num_k)
+    TModel.save_single(6.5, r, 1e-5, 6, num_k)
 end
 
 function save_all_Chaotic(r, T, num_k)
