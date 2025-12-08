@@ -213,6 +213,10 @@ def plot_spec_single(dn):
         # print(popt, pcov)
         perr = np.sqrt(np.diag(pcov))
         print(f"The near-IR end of the energy spectrum has the power: {popt[0]} +- {perr[0]}")
+    
+    fn = join(dn, "spec_bogo_ana.npz")
+    data = np.load(fn)
+    ax.plot(data["k"], data["f"], label="Bogo. ana")
 
     ax.set_xlabel("$k/a_e H_e$")
     ax.set_xscale("log")
@@ -628,24 +632,41 @@ def compare_k_rh():
 def plot_Boltzmann_single_j(dn):
     """
     plot Boltzmann spectrum but to each Fourier modes
-    """
-    fns = [x for x in listdir(dn) if "spec_boltz" in x]
+    """    
+    data = np.load(join(dn, "m_tilde.npz"))
+    a_m = data["a"]
+    # take the first m_tilde as m_tilde(a_e)
+    m_tilde = data["m"]
+    a_m_e = a_m[0] * m_tilde[0] 
+    print(np.log(a_m[0]))
+
+    H_e = np.load(join(dn, "eom.npz"))["H_e"]
+    print(H_e, m_tilde[0])
+    
+    fn_prefix = "spec_boltz_j="
+    fns = [x for x in listdir(dn) if fn_prefix in x]
     print(fns)
 
     fig, ax = plt.subplots()
+
+    data = np.load(join(dn, "spec_boltz.npz"))
+    ax.plot(data["k"], data["f"], label=r"$\Sigma$", color="k")
+
     for fn in fns:
+        j = int(fn.replace(fn_prefix, "").replace(".npz", ""))
         data = np.load(join(dn, fn))
-        try:
-            k = data["X"]
-            f = data["Y"]
-            ax.plot(k, f, alpha=0.5, marker="+")
-            popt, pcov = curve_fit(lambda x, a, b: a*x + b, np.log(k[0:4]), np.log(f[0:4]))
-            popt2, pcov2 = curve_fit(lambda x, a, b: a*x + b, np.log(k[-100:]), np.log(f[-100:]))
-            print(popt, popt2)
-
-        except KeyError:
-            ax.plot(data["k"], data["f"], label=r"$\Sigma$", color="k")
-
+        k = data["X"]
+        f = data["Y"]
+        ax.plot(k, f, alpha=0.5, marker="+", label=f"$j={j}$")
+        # popt, pcov = curve_fit(lambda x, a, b: a*x + b, np.log(k[0:4]), np.log(f[0:4]))
+        # popt2, pcov2 = curve_fit(lambda x, a, b: a*x + b, np.log(k[-100:]), np.log(f[-100:]))
+        # print(popt, popt2)
+        k_co = a_m_e * j
+        ax.plot([k_co, k_co], [10-20, 1e-3], color="gray", ls="dashed")
+    
+    
+    ax.set_xlabel("$k/a_eH_e$")
+    ax.set_ylabel("$f$")
     ax.set_xscale("log")
     ax.set_yscale("log")
     
@@ -655,6 +676,7 @@ def plot_Boltzmann_single_j(dn):
     plt.savefig(fig_fn, bbox_inches="tight") 
     plt.close()
 
+
 def plot_mtilde(dn):
     fn = join(dn, "eom.npz")
     data = np.load(fn)
@@ -662,23 +684,28 @@ def plot_mtilde(dn):
     H = data["H"]
     Ωphi = data["Omega_phi"]
     ρphi = 3 * H**2 * Ωphi
+    a_e = data["a_e"]
+    H_e = data["H_e"]
 
     data = np.load(join(dn, "m_tilde.npz"))
     m = data["m"]
     a_n = data["a"]
     
-    # WARNING: only for n=6 now
+    # WARNING: need to change n
     T = 1e-05 
-    n = 6
+    n = 2
     Γ = (7-n) / (np.sqrt(3)*n) * T**(4/n) * (30/106/np.pi**2)**(-1/n) * ρphi**(1/2 - 1/n)
 
     fig, ax = plt.subplots()
-    ax.plot(N, H, label="$H$")
-    ax.plot(N, Γ, label="$\Gamma$")
+    ax.plot([np.log(a_e), np.log(a_e)], [1e-12, 1e-4], color="gray", ls="--")
+    ax.plot(N, H, label=r"$H$")
+    ax.plot(N, Γ, label=r"$\Gamma$")
     ax.plot(np.log(a_n)[:-1], m, label=r"$\tilde{m}$", marker="+")
 
     ax.set_yscale("log")
     ax.set_xlabel("$N$")
+    ax.set_xlim((np.log(a_e), N[-1]))
+    ax.set_ylim((1e-6, 1e-5))
     
     out_dn = dn.replace("data", "figs")
     fig_fn = join(out_dn, "mtilde.pdf")
@@ -688,14 +715,15 @@ def plot_mtilde(dn):
 
 
 if __name__ == "__main__":
-    # dn = "../data/TModel-n=2/r=1.0e-02-T=1.0e-05/"
+    # dn = "../data/TModel-n=2/r=1.0e-03-T=1.0e-04/"
+    dn = "../data/TModel-n=6/r=1.0e-02-T=1.0e-06/"
     # dn = "../data/Chaotic2/m=4.6e-06-T=1.0e-04/"
-    dn = "../data/Chaotic6/r=1.0e-02-T=1.0e-05/"
+    # dn = "../data/Chaotic4/r=1.0e-02-T=1.0e-05/"
     # plot_back_single(dn)
-    # plot_spec_single(dn)
+    plot_spec_single(dn)
     # plot_all(dn)
     # plot_Boltzmann_single_j(dn)
-    plot_mtilde(dn)
+    # plot_mtilde(dn)
 
     ################################## n = 2
     # plot_all("../data/Chaotic2/")

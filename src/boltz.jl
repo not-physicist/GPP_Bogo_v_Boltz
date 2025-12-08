@@ -8,107 +8,9 @@ module Boltzmann
 using ..Commons
 
 using LinearInterpolations, NumericalIntegration, Peaks, Statistics, Serialization, NPZ, QuadGK, ProgressBars
-using BSplineKit 
+# using BSplineKit 
 using CurveFit
-
-#=
-"""
-interpolate "signal" using cubic spline
-"""
-function _get_dense(x, y)
-    Δx = minimum(diff(x)) / 2
-    x_new = range(x[1], x[end], step=Δx)
-    intp = CubicSpline(x, y)
-    y_new = intp[x_new]
-    return x_new, y_new 
-end
-=#
-
-"""
-get (complex) a single fourier coefficient using the integral formula
-assume the input is exactly one period
-
-only returns absolute value of Fourier coefficient
-"""
-function _get_c_n(x_min, x_max, y_itp, n::Int)
-    # the period of V is always half of the oscillation frequency m
-    P = x_max - x_min
-    ω = 2*π*n/P
-    
-    res = quadgk(k -> y_itp(k)*exp(-1.0im*ω*k)/P, x_min, x_max)
-    # @show res
-    return abs(res[1])
-end
-
-"""
-    Get Fourier series for each oscillation
-    separate arrays for frequencies and four. coeffcients 
-    c_n: two-d array, one for which oscillation, one for which fourier mode
-"""
-function get_four_coeff(num_j, t, V_ρ)
-    # use minima, start from first minima
-    indices = argminima(V_ρ)
-    N = size(indices)[1] - 1
-    
-    # only keep first 50 oscillations
-    # if N > 200
-    #     indices = indices[1:200]
-    #     N = size(indices)[1] - 1
-    # end
-
-    @info "How many minima: " size(indices)
-    
-    if any(x -> x < num_j, diff(indices))
-        @warn "Number of points in one period could be lower than num_j; Fourier series should not be trusted in this case!" diff(indices) num_j
-    end
-
-    m_tilde = zeros(Float64, (N,))
-    c_n = zeros(Float64, (N, num_j))
-    Threads.@threads for i in ProgressBar(1:N)
-        i1 = indices[i]
-        i2 = indices[i+1]
-    
-        # get t and (normalized) V for a single oscillation
-        t_osci = t[i1:i2] .- t[i1]
-        V_osci = (V_ρ)[i1:i2]
-        # P = t_osci[end] - t_osci[1]
-        y_itp = BSplineKit.interpolate(t_osci, V_osci, BSplineOrder(4))
-        c_n[i, :] = [_get_c_n(t_osci[1], t_osci[end], y_itp, j) for j in 1:num_j]
-        m_tilde[i] = π / (t_osci[end] - t_osci[1])
-        
-        #=
-        # check the spline order 
-        if i == 1
-            x_int = range(t_osci[1], t_osci[end], length=size(t_osci)[1]*10)
-            y_int = y_itp.(x_int)
-            npzwrite("data/check_osci_spline_order.npz", Dict(
-                "x" => t_osci,
-                "y" => V_osci,
-                "x_int" => x_int,
-                "y_int" => y_int,
-            ))
-        end
-        # Looks good!
-        =#
-    end
-    mpm2 = get_deriv_BSpline(t[indices[1:end-1]], m_tilde) ./ m_tilde .^2 
-    
-    #=
-    # check the spline order
-    x_int = range(t[indices[1]], t[indices[end-1]], length=(size(indices)[1] - 1)*10)
-    y_int = S.(x_int)
-    npzwrite("data/check_mpm2_spline_order.npz", Dict(
-        "x" => t[indices[1:end-1]],
-        "y" => m_tilde,
-        "x_int" => x_int,
-        "y_int" => y_int,
-    ))
-    # Looks good!
-    =#
-
-    return N, indices, m_tilde, c_n, mpm2
-end
-
+# TODO: clean up unused package
 
 """
 compute the Boltzmann phase space distribution
@@ -116,7 +18,7 @@ decompose the oscillations of inflaton into fourier series
 
 k in unit of aₑHₑ
 """
-function get_f(eom, k::Vector, model::Symbol, dn_single=nothing)
+function get_f(eom, k::Vector, model::Symbol, dn, single=false)
     # how many fourier modes to compute
     # for n=2, it doesn't need to be very large
     if model == :quadratic
@@ -143,7 +45,7 @@ function get_f(eom, k::Vector, model::Symbol, dn_single=nothing)
     # @show a_new[1], H_new[1]
     # @info "a_e H_e / a H =" eom.aₑ * H_new[1] ./ (H_new .* a_new) 
     
-    N, indices, m_tilde, c_n, mpm2 = @time get_four_coeff(num_j, t_new, V_new ./ ρ_new)
+    N, indices, m_tilde, c_n, mdm2 = Commons.get_four_coeff(num_j, t_new, V_new ./ ρ_new, dn)
     # @show size(indices) size(ωj) size(ωpω2)
     
     #=
@@ -175,22 +77,25 @@ function get_f(eom, k::Vector, model::Symbol, dn_single=nothing)
         # @info "Production of first inflaton oscillation at k/a_e H_e = " X[1]
 
         # correction factor 
-        C = @. 1/abs(1 + 1/j * X * eom.aₑ * H_new[1] / (a_new * H_new)[indices[1:end-1]] * (mpm2))
-        # display(C)
+        C = @. 1/abs(1 + 1/j * X * eom.aₑ * H_new[1] / (a_new * H_new)[indices[1:end-1]] * (mdm2))
+        
         #=
         if j == 1
-            @info "Correction factor:"
             display(X)
-            display(C)
+            # display(n2_H)
+            # @info "Correction factor:"
+            # display(C)
         end
         =#
 
         Y = n2_H .* C
 
-        if !isnothing(dn_single) && j <= 5
-            fn = dn_single * "spec_boltz_j=$j.npz"
+        if single && j <= 5
+            fn = dn * "spec_boltz_j=$j.npz"
             npzwrite(fn, Dict("X" => X, "Y" => Y))
         end
+
+        # find the UV cutoff (for n > 4)
 
         if model == :quadratic
             n2_H_dense = Interpolate(X, Y, extrapolate=LinearInterpolations.Constant(0.0)).(k)
@@ -200,8 +105,8 @@ function get_f(eom, k::Vector, model::Symbol, dn_single=nothing)
             f += n2_H_dense
             f += Interpolate(X[end:-1:argmax(X)], Y[end:-1:argmax(X)], extrapolate=LinearInterpolations.Constant(0.0)).(k)
         elseif model == :sextic
-            sort_ind = sortperm(X[1:end-1])
-            f += Interpolate(X[sort_ind], Y[sort_ind], extrapolate=LinearInterpolations.Constant(0.0)).(k)
+            # sort_ind = sortperm(X[1:end-1])
+            f += Interpolate(reverse(X), reverse(Y), extrapolate=LinearInterpolations.Constant(0.0)).(k)
         else
             return ArgumentError("Model not implemented!")
         end
@@ -233,11 +138,7 @@ function save_all(num_k, data_dir, model, log_k_i=0, log_k_f=2, single=false)
     eom = deserialize(data_dir * "eom.dat")
 
     k = @. logspace(log_k_i, log_k_f, num_k)
-    if single
-        f, a, m = @time get_f(eom, k, model, data_dir)
-    else
-        f, a, m = @time get_f(eom, k, model)
-    end
+    f, a, m = @time get_f(eom, k, model, data_dir, single)
     
     # display(k)
     # display(f)
@@ -253,4 +154,5 @@ function save_all(num_k, data_dir, model, log_k_i=0, log_k_f=2, single=false)
 
     return nothing
 end
+
 end

@@ -133,10 +133,10 @@ function solve_diff_mode(k::Real, eom)
     # u₀ = @SVector [1/sqrt(2*k), -1.0im*k/sqrt(2*k)] 
     u₀ = @SVector [1/sqrt(2*ω₀), -1.0im*ω₀/sqrt(2*ω₀)] 
     
-    condition(u, t, integrator) = (abs(1-get_ω2(t)/k^2) < 0.00001)
+    condition(u, t, integrator) = (abs(1-get_ω2(t)/k^2) < 1e-4)
     affect!(integrator) = terminate!(integrator)
     cb = DiscreteCallback(condition, affect!)
-    prob = ODEProblem{false}(get_diff_eq_mode, u₀, tspan, get_ω2, callback=cb)
+    prob = ODEProblem{false}(get_diff_eq_mode, u₀, tspan, get_ω2)
     sol = solve(prob, Vern9(), reltol=1e-12, abstol=1e-12, save_everystep=false, isoutofdomain=get_wronskian_domain, maxiters=1e7)
     χₑ = sol[1, end]
     ∂χₑ = sol[2, end]
@@ -251,6 +251,108 @@ function save_all_every(data_dir)
         "error" => err
         ))
     end
+end
+
+#######################################################################
+# Analytical Bogobiubov 
+#######################################################################
+
+"""
+get the Bogoliubov coefficient analytically
+"""
+# TODO: implement the phase
+function get_beta_bogo_ana(eom, k::Vector, model::Symbol, dn)
+    # how many fourier modes to compute
+    # for n=2, it doesn't need to be very large
+    if model == :quadratic
+        num_j = 10
+    else 
+        num_j = 20 
+    end
+
+    #=
+    Process the eom arrays first
+    apply mask to focus after end of inflation
+
+    interpolation does nothing, don;t want to change now
+    =#
+    # a_mask = eom.a .>= eom.aₑ/5
+    a_mask = eom.a .>= eom.aₑ
+    # t_new, V_new = @time _get_dense(eom.t[a_mask], eom.V[a_mask])
+    t_new = eom.t[a_mask]
+    V_new = eom.V[a_mask]
+    H_new = Interpolate(eom.t[a_mask], eom.H[a_mask]).(t_new)
+    a_new = Interpolate(eom.t[a_mask], eom.a[a_mask]).(t_new)
+    ρ_ϕ = @. eom.Ω_ϕ * 3 * eom.H^2
+    ρ_new = Interpolate(eom.t[a_mask], ρ_ϕ[a_mask]).(t_new)
+    # @show a_new[1], H_new[1]
+    # @info "a_e H_e / a H =" eom.aₑ * H_new[1] ./ (H_new .* a_new) 
+    
+    N, indices, m_tilde, c_n, mdm2 = get_four_coeff(num_j, t_new, V_new ./ ρ_new, dn)
+    # @show size(m_tilde), size(indices)
+    # @info @sprintf "At first minimum: a/a_e = %e" a_new[indices[1]]/a_new[1]
+    # @info @sprintf "At first minimum: m_tilde/H = %e" m_tilde[1] / H_new[1]
+    @info @sprintf "At first minimum: k/a_e H_e = %e" a_new[indices[1]]/a_new[1] * m_tilde[1] / H_new[1]
+    
+    dm = get_deriv_BSpline(t_new[indices[1:end-1]], m_tilde, 2, 1)
+    ddm = get_deriv_BSpline(t_new[indices[1:end-1]], m_tilde, 3, 2)
+    # display(log.(abs.(ddm)))
+    # @show N, size(indices), size(dm), size(ddm)
+    # size of dm, ddm: N (# of oscillations)
+    # size of indices: N+1
+    
+    f = zeros(size(k))
+    for j in 1:num_j
+    # interate over Fourier modes
+        X = @. a_new[indices[1:end-1]] * (dm*t_new[indices[1:end-1]] + m_tilde) * j / a_new[1] / H_new[1]
+        # X = @. a_new[indices[1:end-1]] * (2 / 6 * m_tilde) * j / a_new[1] / H_new[1]
+        # @show size(X)
+
+        # meant to be the (magnitude of) Bogo. coefficient
+        Y = zeros(N)
+        Threads.@threads for i in 1:N
+            i2 = indices[i]
+            # |g''|
+            gpp = abs(2*j*a_new[i2]^2 * (ddm[i]*t_new[i2] + dm[i]*(2+t_new[i2]*H_new[i2]) + m_tilde[i]*H_new[i2]))
+            # use "quasi"-analytical expression
+            # gpp = 2*j * (a_new[i2] * H_new[i2])^2 * m_tilde[i] / H_new[i2]
+
+            Y[i] = 3/2 * (a_new[i2] * H_new[i2])^3 / (a_new[1] * H_new[1])^2 / X[i]^2 * (dm[i]*t_new[i2] + m_tilde[i])/H_new[i2] * abs(c_n[i, j]) * sqrt(π/gpp) 
+        end
+        # @show size(X) size(Y)
+        # @show X[1]
+
+        if j == 1
+            display(X)
+            display(Y)
+        end
+
+        if model == :quadratic
+            tmp = Interpolate(X, Y, extrapolate=LinearInterpolations.Constant(0.0)).(k)
+            f += abs2.(tmp)
+        elseif model == :quartic 
+            tmp = Interpolate(X[1:argmax(X)], Y[1:argmax(X)], extrapolate=LinearInterpolations.Constant(0.0)).(k)
+            f += abs2.(tmp)
+            f += Interpolate(X[end:-1:argmax(X)], Y[end:-1:argmax(X)], extrapolate=LinearInterpolations.Constant(0.0)).(k)
+        else
+            f += Interpolate(reverse(X), reverse(Y), extrapolate=LinearInterpolations.Constant(0.0)).(k)
+        end
+    end
+    # @show k, β
+    return f
+end
+
+function save_all_ana(num_k, data_dir, model, log_k_i=0, log_k_f=2)
+    @info data_dir
+    eom = deserialize(data_dir * "eom.dat")
+
+    k = @. logspace(log_k_i, log_k_f, num_k)
+    f = @time get_beta_bogo_ana(eom, k, model, data_dir)
+
+    npzwrite(data_dir * "spec_bogo_ana.npz", Dict(
+        "k" => k,
+        "f" => f,
+    ))
 end
 
 end

@@ -71,7 +71,7 @@ function save_eom(ϕᵢ, r, T, n, data_dir::String)
     # mkpath(data_dir)
 
     model = TModels(n, 0.974, r, ϕᵢ)
-    # @info Commons.dump_struct(model)
+    @info Commons.dump_struct(model)
     # @info data_dir
     save_model_data(model, data_dir * "model.dat")
 
@@ -113,11 +113,18 @@ function save_single(ϕᵢ, r, T, n, num_k, k_min=-2, k_max=2)
     mkpath(data_dir)
     @info "Model parameter (in GeV): " r, T
     
-    save_eom(ϕᵢ, r, T, n, data_dir)
+    # save_eom(ϕᵢ, r, T, n, data_dir)
     if !isnothing(num_k)
-        PPs.save_all(num_k, data_dir, k_min, k_max)
+        # PPs.save_all(num_k, data_dir, k_min, k_max)
         if n == 2
+            PPs.save_all_ana(num_k, data_dir, :quadratic, -2, 2)
             Boltzmann.save_all(num_k, data_dir, :quadratic)
+        elseif n == 4
+            PPs.save_all_ana(num_k, data_dir, :quartic, -2, 2)
+            Boltzmann.save_all(num_k, data_dir, :quartic)
+        elseif n == 6
+            PPs.save_all_ana(num_k, data_dir, :sextic, -2, 2)
+            Boltzmann.save_all(num_k, data_dir, :sextic, -2, 2, true)
         end
     end
 end

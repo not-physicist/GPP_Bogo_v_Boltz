@@ -7,7 +7,7 @@ module EOMs
 
 using ..Commons
 
-using StaticArrays, OrdinaryDiffEq, Logging, NPZ, Serialization, NumericalIntegration, Peaks, LinearInterpolations
+using StaticArrays, OrdinaryDiffEq, Logging, NPZ, Serialization, NumericalIntegration, Peaks, LinearInterpolations, Printf
 
 const gStar = 106.75 
 
@@ -213,6 +213,8 @@ function get_EOMData(η, ϕ, dϕ, a, ρ_r, V, α, a_e)
 
     H_e = interpolate(a, H, a_e)
     # @info a_e, H_e, log(a_e)
+    ϕ_e = interpolate(a, ϕ, a_e)
+    @info @sprintf "a_e = %e, H_e = %e, ϕ_e = %e" a_e H_e ϕ_e
     
     # dec_index = findfirst(x -> x <= 2/3*Γ, H)
     # a_rh = a[dec_index]

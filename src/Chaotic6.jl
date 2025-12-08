@@ -34,7 +34,7 @@ function get_l(r)
 end
 
 function save_eom(l, T, data_dir)
-    ϕᵢ = 9.0
+    ϕᵢ = 10.0
     dVᵢ = get_dV(ϕᵢ, l)
     Vᵢ = get_V(ϕᵢ, l)
     dϕᵢ = get_dϕ_SR(dVᵢ, Vᵢ, 1.0)
