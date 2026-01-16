@@ -47,6 +47,7 @@ function get_f(eom, k::Vector, model::Symbol, dn, single=false)
     
     N, indices, m_tilde, c_n, mdm2 = Commons.get_four_coeff(num_j, t_new, V_new ./ ρ_new, dn)
     # @show size(indices) size(ωj) size(ωpω2)
+    # @show mdm2
     
     #=
     # do a curve fir of ω(a) of first 10 elements
@@ -75,6 +76,7 @@ function get_f(eom, k::Vector, model::Symbol, dn, single=false)
         # to be interpolated as k/a_e H_e
         X = @. a_new[indices[1:end-1]] * m_tilde * j / a_new[1] / H_new[1]
         # @info "Production of first inflaton oscillation at k/a_e H_e = " X[1]
+        # @show X
 
         # correction factor 
         C = @. 1/abs(1 + 1/j * X * eom.aₑ * H_new[1] / (a_new * H_new)[indices[1:end-1]] * (mdm2))

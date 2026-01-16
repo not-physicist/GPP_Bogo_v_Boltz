@@ -117,14 +117,13 @@ function save_single(ϕᵢ, r, T, n, num_k, k_min=-2, k_max=2)
     if !isnothing(num_k)
         # PPs.save_all(num_k, data_dir, k_min, k_max)
         if n == 2
-            PPs.save_all_ana(num_k, data_dir, :quadratic, -2, 2)
-            Boltzmann.save_all(num_k, data_dir, :quadratic)
+            Boltzmann.save_all(num_k*5, data_dir, :quadratic, k_min, k_max, true)
         elseif n == 4
-            PPs.save_all_ana(num_k, data_dir, :quartic, -2, 2)
-            Boltzmann.save_all(num_k, data_dir, :quartic)
+            PPs.save_all_ana(num_k*5, data_dir, :quartic, k_min, k_max)
+            # Boltzmann.save_all(num_k*5, data_dir, :quartic, k_min, k_max, true)
         elseif n == 6
-            PPs.save_all_ana(num_k, data_dir, :sextic, -2, 2)
-            Boltzmann.save_all(num_k, data_dir, :sextic, -2, 2, true)
+            PPs.save_all_ana(num_k*5, data_dir, :sextic, k_min, k_max)
+            # Boltzmann.save_all(num_k*5, data_dir, :sextic, k_min, k_max, true)
         end
     end
 end

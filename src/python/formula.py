@@ -4,6 +4,7 @@
 gStar = 106.75
 
 import numpy as np
+from scipy.special import hankel2 as h2
 
 #####################################################################
 
@@ -79,3 +80,16 @@ def get_f_exact_boltz(k, a, ρ_ϕ, H, m_ϕ, aₑ, Hₑ):
     f =  np.pi / 64 * n2_H_new
 
     return f
+
+def get_f_ana_slow(k, ω):
+    # k already unitless: k/a_e H_e
+    qr_1 = -1 
+    qr = 2/(1+3*ω)
+    lr = qr_1 - 1/2
+    mr = qr - 1/2
+    xr = qr * k 
+    yr = qr_1 * k
+    
+    # h2 is the second hankel function
+    Q = h2(lr, yr) * h2(mr+1, xr) - h2(mr, xr) * h2(lr+1, yr)
+    return np.absolute(np.pi/4 * np.sqrt(qr_1/qr+0.0J) * xr * Q)**2 * np.exp(-1.59*k)

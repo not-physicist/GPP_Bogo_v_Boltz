@@ -216,7 +216,8 @@ def plot_spec_single(dn):
     
     fn = join(dn, "spec_bogo_ana.npz")
     data = np.load(fn)
-    ax.plot(data["k"], data["f"], label="Bogo. ana")
+    ax.plot(data["k"], data["f"], label="s.p.a.")
+    # ax.plot(data["k"], data["f_pure"], label="Bogo. pure ana")
 
     ax.set_xlabel("$k/a_e H_e$")
     ax.set_xscale("log")
@@ -234,13 +235,20 @@ def plot_spec_single(dn):
     fig, ax = plt.subplots(figsize=(4, 3))
 
     ax.plot(k, n, label="Bogo.", color="k")
-    ax.plot(k_boltz[mask], f_boltz[mask], color="k", ls="dotted", label="exact Boltz.")
+    ax.plot(k_boltz[mask], f_boltz[mask], color="tab:orange", ls="--", label="exact Boltz.")
+    ax.plot(data["k"], data["f"], label="s.p.a.")
+    # ax.plot(data["k"], data["f_pure"], color="tab:red", ls="dotted", label="ana. Bogo.")
+    ax.plot(data["k"], data["f_fast"], color="tab:red", ls="dotted", label="fast Bogo.")
+    # print(data["f_fast"])
+    ax.plot(data["k"], formula.get_f_ana_slow(data["k"], 1/2), color="tab:red", ls="dashed", label="slow Bogo.")
+    draw_Boltzmann_single_j(dn, ax)
+
     ax.set_xlabel("$k/a_e H_e$")
     ax.set_ylabel(r"$|\beta_k|^2$")
     ax.set_xscale("log")
     ax.set_yscale("log")
-    ax.set_xlim((1, 1e2))
-    ax.set_ylim((1e-15, 1e1))
+    ax.set_xlim((1e-1, 1e2))
+    ax.set_ylim((1e-15, 1e5))
     ax.legend(loc="upper right")
 
     fig.tight_layout()
@@ -280,11 +288,11 @@ def draw_spec(dn, AX, AX2, label_pref, m_phi, Γ, c, ls):
     except KeyError:
         # if not found, then no m_eff, just use m_phi
         f_exact_boltz = formula.get_f_exact_boltz(k, a, ρ_ϕ, H, m_phi, a_e, H_e)
-    mask = f_exact_boltz > 1e-15
+    mask = f_exact_boltz > 0.0
 
-    # AX.plot(k[mask], f_exact_boltz[mask], color="tab:cyan", label="approx. Boltz.")
+    AX.plot(k, n, ls=ls, color=c, label=label_pref+"Bogo.")
+    AX.plot(k[mask], f_exact_boltz[mask], color="tab:cyan", ls="dotted", label="approx. Boltz.")
     # AX.plot(k[mask], f_exact_boltz[mask], color=c, label="approx. Boltz.")
-    AX.plot(k, n, ls=ls, color=c, label=label_pref+"Bogo.", alpha=0.5)
  
     try:
         fn = join(dn, "spec_boltz.npz")
@@ -293,12 +301,12 @@ def draw_spec(dn, AX, AX2, label_pref, m_phi, Γ, c, ls):
     except:
         print("No boltzmann resutls found. SKIPPING...")
     else:
-        k = data["k"]
-        f = data["f"]
-        mask = f > 1e-15
-        AX.plot(k[mask], f[mask], color=c, ls="dotted", label=label_pref + "exact Boltz.")
-
+        k_ex_boltz = data["k"]
+        f_ex_boltz = data["f"]
+        mask = f_ex_boltz > 0.0
+        AX.plot(k_ex_boltz[mask], f_ex_boltz[mask], color="tab:orange", ls="dotted", label=label_pref + "exact Boltz.")
     
+
     if AX2 is not None:
         f = formula.get_f(k, a_e/a_rh, H_e, Γ)
         Ω = formula.get_Ω_gw0(ρ, a_e/a_rh, H_e, Γ)
@@ -306,84 +314,43 @@ def draw_spec(dn, AX, AX2, label_pref, m_phi, Γ, c, ls):
 
     return None
 
-def _get_m_Γ_list(fns):
+def _get_r_T_list(fn):
     """
     get list of numerical values of m and Γ
     """
     # read the directory name first
-    m = []
-    Γm = []
-    for fn in fns:
-        if "m=" in fn:
-            m_i, Γ_i = fn.replace("m=", "").split("-Γ=")
-        elif "r=" in fn:
-            m_i, Γ_i = fn.replace("r=", "").split("-Γ=")
-        print(m_i, Γ_i)
-        m.insert(0, float(m_i))
-        Γm.insert(0, round(float(Γ_i)/float(m_i), 4))
-    m = list(set(m))
-    m.sort()
-    Γm = list(set(Γm))
-    Γm.sort()
-    # print(m_array, Γm_array)
+    x = fn.split("/")[3]
+    r, T = x.replace("r=", "").split("-T=")
+    return r, T
 
-    return m, Γm
-
-def plot_all(dn):
-    # remove test
-    fns = [x for x in listdir(dn) if x not in ["test"]]
-    # print(fns)
+"""
+compare beta^2 for quadratic with varied reheating temp
+"""
+def plot_all_quadratic(dns):
+    # print(dns)
+    # print(_get_r_T_list(dns))
     
     # for ρ_k plot
-    fig = plt.figure(1)
+    fig = plt.figure(figsize=(4,3))
     ax = fig.add_subplot()
 
-    # for Ω_gw plot 
-    # fig2 = plt.figure(2)
-    # ax2 = fig2.add_subplot()
-    
-    # linestyles for different Γ/m values
-    ls_array = ["solid", "dashed", "dashdot", "dotted"]
-   
-    m_array, Γm_array = _get_m_Γ_list(fns)
-
     # get color from m_array
-    cmap = colormaps['viridis']
-    color_array = cmap(np.log10(m_array)/np.log10(np.amin(m_array)))
+    # cmap = colormaps['viridis']
+    # color_array = cmap(np.log10(m_array)/np.log10(np.amin(m_array)))
     # print(color_array)
     
-    for fn in fns:
-        # print(fn)
-        if "m=" in fn:
-            m, T = fn.replace("m=", "").split("-T=")
-        elif "r=" in fn:
-            m, T = fn.replace("r=", "").split("-T=")
-        m = float(m)
-        Γ = float(T)
-
-        full_dn = join(dn, fn)
-        plot_back_single(full_dn)
-        
-        # if Γm_array.index(round(Γ/m, 4)) == 0:
-        # show the legend when the ls is solid
-            # label = rf"$m_\phi={_latex_float(m)}" + "m_{pl}$"
-            # label = rf"$\Gamma={_latex_float(Γ/m)} m_\phi$ "
-        # else:
-        #     label = ""
-        # print(label)
-        # label = rf"$\Gamma={_latex_float(Γ/m)} m_\phi$, "
-        plot_spec_single(full_dn)
-        color = color_array[m_array.index(m)]
-        # ls = ls_array[Γm_array.index(round(Γ/m, 4))]
-        ls = None
-        draw_spec(full_dn, ax, None, "", m, Γ, "k", ls)
+    for dn in dns:
+        r, T = _get_r_T_list(dn)
+        m = 4.6e-6
+        Γ = 0.0
+        draw_spec(dn, ax, None, "", m, Γ, "k", "-")
   
     ax.set_xlabel(r"$k/a_e H_e$")
     ax.set_ylabel(r"$f=|\beta_k|^2$")
     ax.set_xscale("log")
     ax.set_yscale("log")
-    ax.set_xlim(1, 1e2)
-    ax.set_ylim(1e-15, 1e1)
+    ax.set_xlim(1, 4e2)
+    ax.set_ylim(1e-12, 1e1)
     
     # only showing first three handles; avoid duplicates
     handles, labels = ax.get_legend_handles_labels()
@@ -392,7 +359,7 @@ def plot_all(dn):
     ax.legend(handles=handles[0:3], loc="upper right")
 
     fig.tight_layout()
-    fig.savefig(dn.replace("data", "figs") + "spec_all.pdf", bbox_inches="tight")
+    fig.savefig("../figs/TModel-n=2/spec_all.pdf", bbox_inches="tight")
     plt.close(1)
     
     """
@@ -629,10 +596,11 @@ def compare_k_rh():
     plt.close(fig=fig)
 
 
-def plot_Boltzmann_single_j(dn):
+def draw_Boltzmann_single_j(dn, ax):
     """
     plot Boltzmann spectrum but to each Fourier modes
     """    
+    '''
     data = np.load(join(dn, "m_tilde.npz"))
     a_m = data["a"]
     # take the first m_tilde as m_tilde(a_e)
@@ -642,40 +610,25 @@ def plot_Boltzmann_single_j(dn):
 
     H_e = np.load(join(dn, "eom.npz"))["H_e"]
     print(H_e, m_tilde[0])
+    '''
     
     fn_prefix = "spec_boltz_j="
     fns = [x for x in listdir(dn) if fn_prefix in x]
-    print(fns)
+    js = [int(x.replace(fn_prefix, "").replace(".npz", "")) for x in fns]
+    # print(fns)
+    cmap = colormaps["magma"]
 
-    fig, ax = plt.subplots()
+    for (fn, j) in zip(fns, js):
+        c = cmap(j/np.amax(js)) 
 
-    data = np.load(join(dn, "spec_boltz.npz"))
-    ax.plot(data["k"], data["f"], label=r"$\Sigma$", color="k")
-
-    for fn in fns:
-        j = int(fn.replace(fn_prefix, "").replace(".npz", ""))
         data = np.load(join(dn, fn))
         k = data["X"]
         f = data["Y"]
-        ax.plot(k, f, alpha=0.5, marker="+", label=f"$j={j}$")
+        ax.plot(k, f, alpha=0.5, color="gray")
         # popt, pcov = curve_fit(lambda x, a, b: a*x + b, np.log(k[0:4]), np.log(f[0:4]))
         # popt2, pcov2 = curve_fit(lambda x, a, b: a*x + b, np.log(k[-100:]), np.log(f[-100:]))
         # print(popt, popt2)
-        k_co = a_m_e * j
-        ax.plot([k_co, k_co], [10-20, 1e-3], color="gray", ls="dashed")
     
-    
-    ax.set_xlabel("$k/a_eH_e$")
-    ax.set_ylabel("$f$")
-    ax.set_xscale("log")
-    ax.set_yscale("log")
-    
-    out_dn = dn.replace("data", "figs")
-    fig_fn = join(out_dn, "spec_boltz_singles.pdf")
-    ax.legend(loc="lower left")
-    plt.savefig(fig_fn, bbox_inches="tight") 
-    plt.close()
-
 
 def plot_mtilde(dn):
     fn = join(dn, "eom.npz")
@@ -713,17 +666,26 @@ def plot_mtilde(dn):
     plt.savefig(fig_fn, bbox_inches="tight") 
     plt.close()
 
+def plot_fourier(dn):
+    data = np.load(join(dn, "four_coef.npz"))
+
+    plt.plot(np.log(data["c_n"]))
+    plt.savefig(dn.replace("data", "figs")+"four_coef.pdf")
 
 if __name__ == "__main__":
-    # dn = "../data/TModel-n=2/r=1.0e-03-T=1.0e-04/"
-    dn = "../data/TModel-n=6/r=1.0e-02-T=1.0e-06/"
-    # dn = "../data/Chaotic2/m=4.6e-06-T=1.0e-04/"
+    # dn = "../data/TModel-n=2/r=1.0e-02-T=1.0e-05/"
+    dn = "../data/TModel-n=4/r=1.0e-02-T=1.0e-05/"
+    # dn = "../data/TModel-n=6/r=1.0e-02-T=1.0e-05/"
+    # dn = "../data/Chaotic2/r=1.0e-02-T=5.0e-05/"
     # dn = "../data/Chaotic4/r=1.0e-02-T=1.0e-05/"
+    # dn = "../data/Chaotic6/r=1.0e-02-T=1.0e-06/"
     # plot_back_single(dn)
     plot_spec_single(dn)
-    # plot_all(dn)
+    # plot_fourier(dn)
     # plot_Boltzmann_single_j(dn)
     # plot_mtilde(dn)
+
+    # plot_all_quadratic([f"../data/TModel-n=2/r=1.0e-02-T={x}" for x in ["1.0e-04", "5.0e-05", "1.0e-05"]])
 
     ################################## n = 2
     # plot_all("../data/Chaotic2/")

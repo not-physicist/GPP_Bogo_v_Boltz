@@ -66,10 +66,11 @@ function save_single(r, T, num_k)
     l = get_l(r)
     @info "Model parameter (in GeV): " l, T
 
-    save_eom(l, T, data_dir)
+    # save_eom(l, T, data_dir)
     if !isnothing(num_k)
-        PPs.save_all(num_k, data_dir, -1, 2)
-        Boltzmann.save_all(num_k, data_dir, :sextic, 0, 2, true)
+        # PPs.save_all(num_k, data_dir, -1, 2)
+        PPs.save_all_ana(num_k, data_dir, :sextic, -2, 1)
+        Boltzmann.save_all(num_k, data_dir, :sextic, -2, 1, true)
     end
 end
 

@@ -5,7 +5,7 @@ module Commons
 
 # using NPZ, NumericalIntegration, LinearInterpolations
 # using Interpolations, JLD2
-using OrdinaryDiffEq, BSplineKit, Peaks, Serialization, QuadGK, ProgressBars
+using OrdinaryDiffEq, BSplineKit, Peaks, Serialization, QuadGK, ProgressBars, NPZ
 
 # export logspace, read_ode, ODEData, get_end, LinearInterpolations, dump_struct, double_trap
 
@@ -92,10 +92,10 @@ function get_four_coeff(num_j, t, V_ρ, dn)
     N = size(indices)[1] - 1
     
     # only keep first $whatever oscillations
-    if N > 200
-        indices = indices[1:200]
-        N = size(indices)[1] - 1
-    end
+    # if N > 200
+    #     indices = indices[1:200]
+    #     N = size(indices)[1] - 1
+    # end
 
     @info "How many minima: " size(indices)
     
@@ -133,7 +133,7 @@ function get_four_coeff(num_j, t, V_ρ, dn)
         =#
     end
     # dm/dt / m^2
-    mdm2 = get_deriv_BSpline(t[indices[1:end-1]], m_tilde) ./ m_tilde .^2 
+    mdm2 = get_deriv_BSpline(t[indices[1:end-1]], m_tilde, 3) ./ m_tilde .^2 
     
     #=
     # check the spline order
@@ -149,6 +149,7 @@ function get_four_coeff(num_j, t, V_ρ, dn)
     =#
     
     serialize(fn, (N, indices, m_tilde, c_n, mdm2))
+    npzwrite(dn * "four_coef.npz", Dict("c_n" => c_n))
 
     return N, indices, m_tilde, c_n, mdm2
 end

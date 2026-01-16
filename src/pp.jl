@@ -4,6 +4,9 @@ using StaticArrays, OrdinaryDiffEq, NPZ, NumericalIntegration, ProgressBars, Lin
 #  using JLD2
 #  using Infiltritor
 using Interpolations
+using BSplineKit 
+using Peaks
+using QuadGK
 
 using ..Commons
 
@@ -42,7 +45,8 @@ function get_p_alpha(k::Real, t, app_a, app_a_p)
     ω = @. sqrt(Complex(k^2 - app_a))
     dω = @. - app_a_p / (2.0 * ω)
     Ω = cumul_integrate(t, ω)
-
+    
+    # TODO: can be improved by using BSpline interpolation (maybe too expensive?)
     get_ω = LinearInterpolations.Interpolate(t, ω)
     get_dω = LinearInterpolations.Interpolate(t, dω)
     get_Ω = LinearInterpolations.Interpolate(t, Ω)
@@ -260,7 +264,6 @@ end
 """
 get the Bogoliubov coefficient analytically
 """
-# TODO: implement the phase
 function get_beta_bogo_ana(eom, k::Vector, model::Symbol, dn)
     # how many fourier modes to compute
     # for n=2, it doesn't need to be very large
@@ -269,6 +272,105 @@ function get_beta_bogo_ana(eom, k::Vector, model::Symbol, dn)
     else 
         num_j = 20 
     end
+
+    #=
+    Process the eom arrays first
+    apply mask to focus after end of inflation
+
+    interpolation does nothing, don;t want to change now
+    =#
+    # a_mask = eom.a .>= eom.aₑ/5
+    a_mask = eom.a .>= eom.aₑ
+    # t_new, V_new = @time _get_dense(eom.t[a_mask], eom.V[a_mask])
+    τ_new = eom.τ[a_mask]
+    t_new = eom.t[a_mask]
+    t_new = eom.t[a_mask]
+    V_new = eom.V[a_mask]
+    H_new = Interpolate(eom.t[a_mask], eom.H[a_mask]).(t_new)
+    a_new = Interpolate(eom.t[a_mask], eom.a[a_mask]).(t_new)
+    ρ_ϕ = @. eom.Ω_ϕ * 3 * eom.H^2
+    ρ_new = Interpolate(eom.t[a_mask], ρ_ϕ[a_mask]).(t_new)
+    # @show a_new[1], H_new[1]
+    # @info "a_e H_e / a H =" eom.aₑ * H_new[1] ./ (H_new .* a_new) 
+    
+    N, indices, m_tilde, c_n, _ = get_four_coeff(num_j, t_new, V_new ./ ρ_new, dn)
+    # @show size(m_tilde), size(indices)
+    # @info @sprintf "At first minimum: a/a_e = %e" a_new[indices[1]]/a_new[1]
+    # @info @sprintf "At first minimum: m_tilde/H = %e" m_tilde[1] / H_new[1]
+    @info @sprintf "At first minimum: k/a_e H_e = %e" a_new[indices[1]]/a_new[1] * m_tilde[1] / H_new[1]
+    
+    dm = get_deriv_BSpline(t_new[indices[1:end-1]], m_tilde, 2, 1)
+    ddm = get_deriv_BSpline(t_new[indices[1:end-1]], m_tilde, 3, 2)
+    # display(log.(abs.(ddm)))
+    # @show N, size(indices), size(dm), size(ddm)
+    # size of dm, ddm: N (# of oscillations)
+    # size of indices: N+1
+    
+    f = zeros(size(k))
+    for j in 1:num_j
+    # interate over Fourier modes
+        X = @. a_new[indices[1:end-1]] * (dm*t_new[indices[1:end-1]] + m_tilde) * j / (a_new[1] * H_new[1])
+        # X = @. a_new[indices[1:end-1]] * (2 / 6 * m_tilde) * j / a_new[1] / H_new[1]
+        # @show size(X)
+
+        # meant to be the (magnitude of) Bogo. coefficient
+        Y = zeros(ComplexF64, N)
+        Threads.@threads for i in 1:N
+            i2 = indices[i]
+            # g''
+            gpp = -2*j*a_new[i2]^2 * (ddm[i]*t_new[i2] + dm[i]*(2+t_new[i2]*H_new[i2]) + m_tilde[i]*H_new[i2])
+            # use "quasi"-analytical expression
+            # gpp = 2*j * (a_new[i2] * H_new[i2])^2 * m_tilde[i] / H_new[i2]
+
+            # the phase 
+            ψ = -2 * (j * m_tilde[i] * t_new[i2] + X[i] * a_new[1] * H_new[1]*τ_new[i2]) - sign(gpp) * π / 4
+            # @show ψ
+            
+            # TODO: potential improvement: use the real fourier coefficients instead of the first set. 
+            # Seems very complicated as the index i corresponds to elements of X, which are not "properly" ordered.
+            Y[i] = 3.0im/2 * (a_new[i2] * H_new[i2])^2 / (a_new[1] * H_new[1]) / (X[i] * j) * abs(c_n[1, j]) * sqrt(π/abs(gpp)) * exp(1.0im * ψ)
+        end
+        # @show size(X) size(Y)
+        # @show X[1]
+
+        # if j == 1
+        #     display(X)
+        #     display(Y)
+        # end
+
+        if model == :quadratic
+            tmp = Interpolate(X, Y, extrapolate=LinearInterpolations.Constant(0.0)).(k)
+            f += tmp
+        elseif model == :quartic 
+            tmp = Interpolate(X[1:argmax(X)], Y[1:argmax(X)], extrapolate=LinearInterpolations.Constant(0.0)).(k)
+            f += tmp
+            tmp2 = Interpolate(X[end:-1:argmax(X)], Y[end:-1:argmax(X)], extrapolate=LinearInterpolations.Constant(0.0)).(k)
+            f += tmp2
+        else
+            tmp = Interpolate(reverse(X), reverse(Y), extrapolate=LinearInterpolations.Constant(0.0)).(k)
+            f += tmp
+        end
+
+    end
+    return abs2.(f)
+end
+
+"""
+use (almost) pure analytical expression for the beta
+"""
+function get_beta_bogo_pure_ana(eom, k::Vector, model::Symbol, dn)
+    if model == :sextic 
+        n = 6
+        num_j = 20
+    elseif  model == :quartic
+        n = 4 
+        return false
+    else
+        return nothing
+    end
+    ω = (n-2)/(n+2)
+    # aₑ = eom.aₑ
+    # Hₑ = eom.Hₑ
 
     #=
     Process the eom arrays first
@@ -289,58 +391,57 @@ function get_beta_bogo_ana(eom, k::Vector, model::Symbol, dn)
     # @info "a_e H_e / a H =" eom.aₑ * H_new[1] ./ (H_new .* a_new) 
     
     N, indices, m_tilde, c_n, mdm2 = get_four_coeff(num_j, t_new, V_new ./ ρ_new, dn)
-    # @show size(m_tilde), size(indices)
-    # @info @sprintf "At first minimum: a/a_e = %e" a_new[indices[1]]/a_new[1]
-    # @info @sprintf "At first minimum: m_tilde/H = %e" m_tilde[1] / H_new[1]
-    @info @sprintf "At first minimum: k/a_e H_e = %e" a_new[indices[1]]/a_new[1] * m_tilde[1] / H_new[1]
-    
-    dm = get_deriv_BSpline(t_new[indices[1:end-1]], m_tilde, 2, 1)
-    ddm = get_deriv_BSpline(t_new[indices[1:end-1]], m_tilde, 3, 2)
-    # display(log.(abs.(ddm)))
-    # @show N, size(indices), size(dm), size(ddm)
-    # size of dm, ddm: N (# of oscillations)
-    # size of indices: N+1
+    m0 = m_tilde[1]
+    # S = BSplineKit.interpolate(log.(a_new[indices[1:end-1]]), m_tilde, BSplineOrder(3))
+    # m0 = BSplineKit.extrapolate(S, BSplineKit.Smooth()).(log(a_new[1]))
+    # @show m0
+
+    # Hubble at beginning of first oscillation
+    H_0 = LinearInterpolations.Interpolate(a_new, H_new).(a_new[indices[1]])
     
     f = zeros(size(k))
     for j in 1:num_j
-    # interate over Fourier modes
-        X = @. a_new[indices[1:end-1]] * (dm*t_new[indices[1:end-1]] + m_tilde) * j / a_new[1] / H_new[1]
-        # X = @. a_new[indices[1:end-1]] * (2 / 6 * m_tilde) * j / a_new[1] / H_new[1]
-        # @show size(X)
-
-        # meant to be the (magnitude of) Bogo. coefficient
-        Y = zeros(N)
-        Threads.@threads for i in 1:N
-            i2 = indices[i]
-            # |g''|
-            gpp = abs(2*j*a_new[i2]^2 * (ddm[i]*t_new[i2] + dm[i]*(2+t_new[i2]*H_new[i2]) + m_tilde[i]*H_new[i2]))
-            # use "quasi"-analytical expression
-            # gpp = 2*j * (a_new[i2] * H_new[i2])^2 * m_tilde[i] / H_new[i2]
-
-            Y[i] = 3/2 * (a_new[i2] * H_new[i2])^3 / (a_new[1] * H_new[1])^2 / X[i]^2 * (dm[i]*t_new[i2] + m_tilde[i])/H_new[i2] * abs(c_n[i, j]) * sqrt(π/gpp) 
-        end
-        # @show size(X) size(Y)
-        # @show X[1]
-
-        if j == 1
-            display(X)
-            display(Y)
-        end
-
-        if model == :quadratic
-            tmp = Interpolate(X, Y, extrapolate=LinearInterpolations.Constant(0.0)).(k)
-            f += abs2.(tmp)
-        elseif model == :quartic 
-            tmp = Interpolate(X[1:argmax(X)], Y[1:argmax(X)], extrapolate=LinearInterpolations.Constant(0.0)).(k)
-            f += abs2.(tmp)
-            f += Interpolate(X[end:-1:argmax(X)], Y[end:-1:argmax(X)], extrapolate=LinearInterpolations.Constant(0.0)).(k)
-        else
-            f += Interpolate(reverse(X), reverse(Y), extrapolate=LinearInterpolations.Constant(0.0)).(k)
-        end
+        X = n/(2*j) * H_0/m0 * k
+        X = [x < 1 ? x : 0.0 for x in X]
+        # @show abs.(c_n[j])
+        # TODO: use the "real" data on Fourier coefficients; not very important
+        β = @. 3 / 8 * sqrt(π/(j*abs(1-3*ω))) * n * abs(c_n[1, j])/j * (H_0/m0)^(3/2) * (X)^(-9/4*(1-ω)/(1-3ω))
+        f += abs2.(β)
     end
-    # @show k, β
     return f
 end
+
+#######################################################################
+# Analytical Bogobiubov w\o slow contributions
+#######################################################################
+
+"""
+only using the integral to get the Bogo. coefficients
+expect to only contain the fast contributions
+"""
+function get_beta_bogo_fast(eom, k::Vector)
+    τ = eom.τ
+
+    # start from end of inflation 
+    # τ = eom.τ[eom.a .>= eom.aₑ]
+
+    # start from first oscillation
+    # indices = argminima(eom.V)
+    # τ1 = eom.τ[indices[1]]
+    # @show eom.τ[indices[1]], eom.τ[eom.a .>= eom.aₑ][1]
+    # τ = eom.τ[eom.τ .> eom.τ[indices[1]]]
+
+    f = zeros(size(k))
+    Threads.@threads for i in eachindex(k)
+        ω, dω, Ω = get_p_alpha(k[i], eom.τ, eom.app_a, eom.app_a_p)
+        integrand = t -> dω(t) / (2*ω(t)) * exp(-2.0im * Ω(t))
+        # BUG: using the original data might not be enough. need to have more points
+        β = integrate(τ, integrand.(τ))
+        f[i] = abs2(β)
+    end
+    return f
+end
+
 
 function save_all_ana(num_k, data_dir, model, log_k_i=0, log_k_f=2)
     @info data_dir
@@ -348,11 +449,25 @@ function save_all_ana(num_k, data_dir, model, log_k_i=0, log_k_f=2)
 
     k = @. logspace(log_k_i, log_k_f, num_k)
     f = @time get_beta_bogo_ana(eom, k, model, data_dir)
+    f_pure = @time get_beta_bogo_pure_ana(eom, k, model, data_dir)
+    f_fast = @time get_beta_bogo_fast(eom, k)
+    
+    if f_pure == false 
+        npzwrite(data_dir * "spec_bogo_ana.npz", Dict(
+            "k" => k,
+            "f" => f,
+            "f_fast" => f_fast
+        ))
+    else
+        npzwrite(data_dir * "spec_bogo_ana.npz", Dict(
+            "k" => k,
+            "f" => f,
+            "f_fast" => f_fast,
+            "f_pure" => f_pure
+        ))
+    end
 
-    npzwrite(data_dir * "spec_bogo_ana.npz", Dict(
-        "k" => k,
-        "f" => f,
-    ))
+    return nothing
 end
 
 end
