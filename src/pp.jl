@@ -7,6 +7,7 @@ using Interpolations
 using BSplineKit 
 using Peaks
 using QuadGK
+using SpecialFunctions: hankelh2
 
 using ..Commons
 
@@ -262,9 +263,9 @@ end
 #######################################################################
 
 """
-get the Bogoliubov coefficient analytically
+get the Bogoliubov coefficient analytically using stationary point approximation
 """
-function get_beta_bogo_ana(eom, k::Vector, model::Symbol, dn)
+function get_beta_bogo_spa(eom, k::Vector, model::Symbol, dn)
     # how many fourier modes to compute
     # for n=2, it doesn't need to be very large
     if model == :quadratic
@@ -306,7 +307,7 @@ function get_beta_bogo_ana(eom, k::Vector, model::Symbol, dn)
     # size of dm, ddm: N (# of oscillations)
     # size of indices: N+1
     
-    f = zeros(size(k))
+    β = zeros(ComplexF64, size(k))
     for j in 1:num_j
     # interate over Fourier modes
         X = @. a_new[indices[1:end-1]] * (dm*t_new[indices[1:end-1]] + m_tilde) * j / (a_new[1] * H_new[1])
@@ -340,25 +341,25 @@ function get_beta_bogo_ana(eom, k::Vector, model::Symbol, dn)
 
         if model == :quadratic
             tmp = Interpolate(X, Y, extrapolate=LinearInterpolations.Constant(0.0)).(k)
-            f += tmp
+            β += tmp
         elseif model == :quartic 
             tmp = Interpolate(X[1:argmax(X)], Y[1:argmax(X)], extrapolate=LinearInterpolations.Constant(0.0)).(k)
-            f += tmp
+            β += tmp
             tmp2 = Interpolate(X[end:-1:argmax(X)], Y[end:-1:argmax(X)], extrapolate=LinearInterpolations.Constant(0.0)).(k)
-            f += tmp2
+            β += tmp2
         else
             tmp = Interpolate(reverse(X), reverse(Y), extrapolate=LinearInterpolations.Constant(0.0)).(k)
-            f += tmp
+            β += tmp
         end
 
     end
-    return abs2.(f)
+    return abs2.(β)
 end
 
 """
-use (almost) pure analytical expression for the beta
+use (almost) pure analytical expression for the beta using stationary point approximation
 """
-function get_beta_bogo_pure_ana(eom, k::Vector, model::Symbol, dn)
+function get_beta_bogo_spa_ana(eom, k::Vector, model::Symbol, dn)
     if model == :sextic 
         n = 6
         num_j = 20
@@ -418,28 +419,75 @@ end
 """
 only using the integral to get the Bogo. coefficients
 expect to only contain the fast contributions
+
+the commented-out part solves the differential equations instead; deliver the same result!
 """
 function get_beta_bogo_fast(eom, k::Vector)
-    τ = eom.τ
+    # start from inflation
+    # τ = eom.τ
 
     # start from end of inflation 
-    # τ = eom.τ[eom.a .>= eom.aₑ]
-
-    # start from first oscillation
-    # indices = argminima(eom.V)
-    # τ1 = eom.τ[indices[1]]
-    # @show eom.τ[indices[1]], eom.τ[eom.a .>= eom.aₑ][1]
-    # τ = eom.τ[eom.τ .> eom.τ[indices[1]]]
-
-    f = zeros(size(k))
-    Threads.@threads for i in eachindex(k)
-        ω, dω, Ω = get_p_alpha(k[i], eom.τ, eom.app_a, eom.app_a_p)
-        integrand = t -> dω(t) / (2*ω(t)) * exp(-2.0im * Ω(t))
-        # BUG: using the original data might not be enough. need to have more points
-        β = integrate(τ, integrand.(τ))
-        f[i] = abs2(β)
+    τ = eom.τ[eom.a .>= eom.aₑ]
+    
+    β = zeros(ComplexF64, size(k))
+    Threads.@threads for i in ProgressBar(eachindex(k))
+        if k[i] .< 2.5 * eom.aₑ * eom.Hₑ
+            β[i] = 0 
+        else
+            ω, dω, Ω = get_p_alpha(k[i], eom.τ, eom.app_a, eom.app_a_p)
+            integrand = t -> dω(t) / (2*ω(t)) * exp(-2.0im * Ω(t))
+            # integrand = t -> dω(t) / (2*k[i]) * exp(-2.0im * k[i] * t)
+            β[i], _ = quadgk(integrand, τ[1], τ[end], atol=1e-10)
+        end
     end
-    return f
+    return β
+    
+    #=
+    if check_array(eom.app_a) | check_array(eom.app_a_p)
+        throw(ArgumentError("Input arrays contain NaN or Inf!"))
+    end
+
+    β = zeros(ComplexF64, size(k)) 
+    Threads.@threads for i in ProgressBar(eachindex(k))
+        p = get_p_alpha(k[i], eom.τ, eom.app_a, eom.app_a_p)
+        
+        tspan = [τ[1], τ[end]]
+        u₀ = SA[1.0 + 0.0im, 0.0+0.0im]
+
+        prob = ODEProblem{false}(get_diff_eq_alpha, u₀, tspan, p)
+        sol = solve(prob, Vern9(), reltol=1e-12, abstol=1e-12, save_everystep=false, maxiters=1e8, isoutofdomain=get_alpha_beta_domain)
+
+        β[i] = sol[2, end]
+    end
+
+    return β
+    =#
+end
+
+"""
+transitional production 
+"""
+function get_beta_bogo_trans(k::Vector, model)
+    if model == :quartic 
+        ω = 1/3 
+    elseif model == :sextic 
+        ω = 1/2 
+    else 
+        @error "dont know the model" 
+        return nothing
+    end
+
+    qr_1 = -1.0
+    qr = 2.0 /(1+3*ω)
+    lr = qr_1 - 1/2
+    mr = qr - 1/2
+    xr = @. qr * k + 0.0im
+    yr = @. qr_1 * k + 0.0im
+
+    Q = @. hankelh2(lr, yr) * hankelh2(mr+1, xr) - hankelh2(mr, xr) * hankelh2(lr+1, yr)
+    β = @. - 1.0im * π/4 * sqrt(qr_1/qr+0.0im) * xr * Q * exp(-1.59*k)
+    # @show k, abs2.(β)
+    return β
 end
 
 
@@ -447,23 +495,26 @@ function save_all_ana(num_k, data_dir, model, log_k_i=0, log_k_f=2)
     @info data_dir
     eom = deserialize(data_dir * "eom.dat")
 
-    k = @. logspace(log_k_i, log_k_f, num_k)
-    f = @time get_beta_bogo_ana(eom, k, model, data_dir)
-    f_pure = @time get_beta_bogo_pure_ana(eom, k, model, data_dir)
-    f_fast = @time get_beta_bogo_fast(eom, k)
+    k = @. logspace(log_k_i, log_k_f, num_k) * eom.aₑ * eom.Hₑ
+    f_spa = @time get_beta_bogo_spa(eom, k / eom.aₑ / eom.Hₑ, model, data_dir)
+    f_spa_ana = @time get_beta_bogo_spa_ana(eom, k, model, data_dir)
+    β_fast = @time get_beta_bogo_fast(eom, k)
+    β_trans = @time get_beta_bogo_trans(k / eom.aₑ / eom.Hₑ, model)
     
-    if f_pure == false 
+    if f_spa_ana == false 
         npzwrite(data_dir * "spec_bogo_ana.npz", Dict(
-            "k" => k,
-            "f" => f,
-            "f_fast" => f_fast
+            "k" => k ./ eom.aₑ / eom.Hₑ,
+            "f_spa" => f_spa,
+            "f_fast" => abs2.(β_fast),
+            "f_comb" => abs2.(β_fast .+ β_trans)
         ))
     else
         npzwrite(data_dir * "spec_bogo_ana.npz", Dict(
-            "k" => k,
-            "f" => f,
-            "f_fast" => f_fast,
-            "f_pure" => f_pure
+            "k" => k ./ eom.aₑ / eom.Hₑ,
+            "f_spa" => f_spa,
+            "f_spa_ana" => f_spa_ana,
+            "f_fast" => abs2.(β_fast),
+            "f_comb" => abs2.(β_fast .+ β_trans)
         ))
     end
 

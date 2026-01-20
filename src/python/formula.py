@@ -22,7 +22,7 @@ def get_f(k, a_e_rh, H_e, T):
     returns frequency in hertz
     """
     # return 1.80e10 * k * a_e_rh * H_e * Γ**(-1/2)
-    return 18.8e9 * k * a_e_rh * H_e / T
+    return 18.886e9 * k * a_e_rh * H_e / T
 
 def get_Ω_gw0(ρ, a_e_rh, H_e, T):
     """
@@ -30,7 +30,7 @@ def get_Ω_gw0(ρ, a_e_rh, H_e, T):
     ρ = a0^4 ρ / a_e^4 H_e^4
     """
     # return 3.83e-14 * ρ * a_e_rh**4 * H_e**4 * Γ**(-2)
-    return 0.37 * ρ * a_e_rh**4 * (H_e/T)**4
+    return 0.4609 * ρ * a_e_rh**4 * (H_e/T)**4
 
 #####################################################################
 

@@ -40,6 +40,7 @@ def plot_back_single(dn):
     a = data["a"]
     H = data["H"]
     app_a = data["app_a"]
+    app_a_p = data["app_a_p"]
     phi = data["phi"]
     Omega_r = data["Omega_r"]
     Omega_ϕ = data["Omega_phi"]
@@ -131,7 +132,7 @@ def plot_back_single(dn):
     ###############################
     # a''/a and H
     ###############################
-    fig, (ax, ax2) = plt.subplots(ncols=2)
+    fig, (ax, ax2, ax3) = plt.subplots(ncols=3, figsize=(8, 4))
     ax.plot(N, app_a, c="k")
     ax.plot([N[0], N[-1]], [a_e*H_e, a_e*H_e], c="k")
     ax.set_xlabel(r"$\ln(a)$")
@@ -145,6 +146,23 @@ def plot_back_single(dn):
     
     plt.tight_layout()
     fig_fn = join(out_dn, "app_a.pdf")
+    plt.savefig(fig_fn, bbox_inches="tight")
+    plt.close()
+
+    ###############################
+    # (a''/a)' 
+    ###############################
+    fig, ax= plt.subplots(figsize=(5, 4))
+
+    ax.plot(N, app_a_p / (a * H), c="k")
+    ax.plot(np.log([a_e, a_e]), [0, 1],  c="k", alpha=0.5, ls="--")
+    ax.set_xlabel(r"$N=\ln(a)$")
+    ax.set_ylabel(r"$(a''/a)'/ m_{\textrm{pl}}^3$")
+    ax.set_yscale("log")
+    
+    ax.set_ylim((1e-5, 5e-1))
+    plt.tight_layout()
+    fig_fn = join(out_dn, "app_a_p.pdf")
     plt.savefig(fig_fn, bbox_inches="tight")
     plt.close()
 
@@ -216,7 +234,7 @@ def plot_spec_single(dn):
     
     fn = join(dn, "spec_bogo_ana.npz")
     data = np.load(fn)
-    ax.plot(data["k"], data["f"], label="s.p.a.")
+    ax.plot(data["k"], data["f_spa"], label="s.p.a.")
     # ax.plot(data["k"], data["f_pure"], label="Bogo. pure ana")
 
     ax.set_xlabel("$k/a_e H_e$")
@@ -236,9 +254,10 @@ def plot_spec_single(dn):
 
     ax.plot(k, n, label="Bogo.", color="k")
     ax.plot(k_boltz[mask], f_boltz[mask], color="tab:orange", ls="--", label="exact Boltz.")
-    ax.plot(data["k"], data["f"], label="s.p.a.")
+    ax.plot(data["k"], data["f_spa"], label="s.p.a.")
     # ax.plot(data["k"], data["f_pure"], color="tab:red", ls="dotted", label="ana. Bogo.")
     ax.plot(data["k"], data["f_fast"], color="tab:red", ls="dotted", label="fast Bogo.")
+    ax.plot(data["k"], data["f_comb"], color="tab:purple", ls="dotted", label="comb.")
     # print(data["f_fast"])
     ax.plot(data["k"], formula.get_f_ana_slow(data["k"], 1/2), color="tab:red", ls="dashed", label="slow Bogo.")
     draw_Boltzmann_single_j(dn, ax)
@@ -673,14 +692,14 @@ def plot_fourier(dn):
     plt.savefig(dn.replace("data", "figs")+"four_coef.pdf")
 
 if __name__ == "__main__":
-    # dn = "../data/TModel-n=2/r=1.0e-02-T=1.0e-05/"
-    dn = "../data/TModel-n=4/r=1.0e-02-T=1.0e-05/"
+    dn = "../data/TModel-n=2/r=1.0e-02-T=1.0e-04/"
+    # dn = "../data/TModel-n=4/r=1.0e-02-T=1.0e-05/"
     # dn = "../data/TModel-n=6/r=1.0e-02-T=1.0e-05/"
     # dn = "../data/Chaotic2/r=1.0e-02-T=5.0e-05/"
     # dn = "../data/Chaotic4/r=1.0e-02-T=1.0e-05/"
     # dn = "../data/Chaotic6/r=1.0e-02-T=1.0e-06/"
-    # plot_back_single(dn)
-    plot_spec_single(dn)
+    plot_back_single(dn)
+    # plot_spec_single(dn)
     # plot_fourier(dn)
     # plot_Boltzmann_single_j(dn)
     # plot_mtilde(dn)
