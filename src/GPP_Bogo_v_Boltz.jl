@@ -29,11 +29,21 @@ export Chaotic6
 
 function save_all_TModel()
     num_k = 200
-    r = 0.01
 
+    r = 0.01
     TModel.save_single(5.0, r, 1e-4, 2, num_k)
     TModel.save_single(6.0, r, 1e-5, 4, num_k)
     TModel.save_single(6.5, r, 1e-5, 6, num_k)
+    
+    r = 0.001
+    TModel.save_single(3.0, r, 1e-4, 2, num_k)
+    TModel.save_single(3.2, r, 1e-5, 4, num_k)
+    TModel.save_single(3.4, r, 1e-5, 6, num_k)
+ 
+    r = 0.1
+    TModel.save_single(6.0, r, 1e-4, 2, num_k)
+    TModel.save_single(8.0, r, 1e-5, 4, num_k)
+    TModel.save_single(10.0, r, 1e-5, 6, num_k)
 end
 
 function save_all_Chaotic(r, T, num_k)

@@ -1,10 +1,10 @@
-from matplotlib.patches import bbox_artist
-import matplotlib.pyplot as plt
-from matplotlib import colormaps
 import numpy as np
 from scipy.ndimage import gaussian_filter1d
 from scipy.optimize import curve_fit
-    
+ 
+from matplotlib.patches import bbox_artist
+import matplotlib.pyplot as plt
+from matplotlib import colormaps
 from matplotlib import rc
 rc('font',**{'family':'sans-serif','sans-serif':['Helvetica']})
 rc('text', usetex=True)
@@ -12,6 +12,10 @@ rc('text', usetex=True)
 from os import listdir 
 from os.path import join
 from pathlib import Path
+
+# import scienceplots
+plt.style.use('tableau-colorblind10')
+# print(plt.style.available)
 
 import formula
 
@@ -232,11 +236,6 @@ def plot_spec_single(dn):
         perr = np.sqrt(np.diag(pcov))
         print(f"The near-IR end of the energy spectrum has the power: {popt[0]} +- {perr[0]}")
     
-    fn = join(dn, "spec_bogo_ana.npz")
-    data = np.load(fn)
-    ax.plot(data["k"], data["f_spa"], label="s.p.a.")
-    # ax.plot(data["k"], data["f_pure"], label="Bogo. pure ana")
-
     ax.set_xlabel("$k/a_e H_e$")
     ax.set_xscale("log")
     ax.set_yscale("log")
@@ -249,18 +248,23 @@ def plot_spec_single(dn):
     fig_fn = join(out_dn, "specs.pdf")
     fig.savefig(fig_fn, bbox_inches="tight")
     plt.close(fig=fig)
-
+    
+    ####################################################
     fig, ax = plt.subplots(figsize=(4, 3))
 
     ax.plot(k, n, label="Bogo.", color="k")
     ax.plot(k_boltz[mask], f_boltz[mask], color="tab:orange", ls="--", label="exact Boltz.")
-    ax.plot(data["k"], data["f_spa"], label="s.p.a.")
-    # ax.plot(data["k"], data["f_pure"], color="tab:red", ls="dotted", label="ana. Bogo.")
-    ax.plot(data["k"], data["f_fast"], color="tab:red", ls="dotted", label="fast Bogo.")
-    ax.plot(data["k"], data["f_comb"], color="tab:purple", ls="dotted", label="comb.")
-    # print(data["f_fast"])
-    ax.plot(data["k"], formula.get_f_ana_slow(data["k"], 1/2), color="tab:red", ls="dashed", label="slow Bogo.")
-    draw_Boltzmann_single_j(dn, ax)
+    try:
+        fn = join(dn, "spec_bogo_ana.npz")
+        data = np.load(fn)
+        ax.plot(k_boltz[mask], f_boltz[mask], color="tab:orange", ls="--", label="exact Boltz.")
+        ax.plot(data["k"], data["f_spa"], label="s.p.a.")
+        # ax.plot(data["k"], data["f_fast"], color="tab:red", ls="dotted", label="fast Bogo.")
+        # ax.plot(data["k"], data["f_comb"], color="tab:purple", ls="dotted", label="comb.")
+        # ax.plot(data["k"], formula.get_f_ana_slow(data["k"], 1/2), color="tab:red", ls="dashed", label="slow Bogo.")
+        draw_Boltzmann_single_j(dn, ax)
+    except FileNotFoundError:
+        pass
 
     ax.set_xlabel("$k/a_e H_e$")
     ax.set_ylabel(r"$|\beta_k|^2$")
@@ -576,7 +580,7 @@ def plot_all_n():
 
 def compare_k_rh():
     Ts = [1e-04, 1e-05]
-    labels = [r"$10^{-4} m_\textrm{pl}$", r"$10^{-5} m_\textrm{pl}$"]
+    labels = ["$" + r"T_{\textrm{rh}}=" + x + r"m_\textrm{pl}$" for x in [r"10^{-4}", r"10^{-5}"]]
     # print(dn)
 
     fig, ax = plt.subplots(figsize=(4,3))
@@ -586,11 +590,19 @@ def compare_k_rh():
         data = np.load(fn)
         # print(data)
 
+        fn_back = join(dn, "eom.npz")
+        data_back = np.load(fn_back)
+        a_e_rh = data_back["a_e"] / data_back["a_rh"]
+        H_e = data_back["H_e"]
+
         k = data["k"]
         ρ = data["rho"]
         # n = data["n"]
+        f = formula.get_f(k, a_e_rh, H_e, T)
+        Ogw = formula.get_Ω_gw0(ρ, a_e_rh, H_e, T)
 
-        ax.plot(k, ρ, label=label)
+        # l = ax.plot(k, ρ, label=label)[0]
+        l = ax.plot(f, Ogw, label=label)[0]
 
         data = np.load(join(dn, "eom.npz"))
         a_rh = data["a_rh"]
@@ -601,12 +613,17 @@ def compare_k_rh():
         H = data["H"]
         H_rh = np.interp(a_rh, a, H)
         k_rh = a_rh * H_rh / a_e / H_e
-        ax.plot([k_rh, k_rh], [1e-10, 1], color="gray", ls="--")
+        f_rh = formula.get_f(k_rh, a_e_rh, H_e, T)
+        # ax.plot([k_rh, k_rh], [1e-10, 100], ls="--", c=l.get_color(), alpha=0.5)
+        ax.plot([f_rh, f_rh], [np.amin(Ogw), np.amax(Ogw)], ls="--", c=l.get_color(), alpha=0.5)
 
     ax.set_xscale("log")
     ax.set_yscale("log")
-    ax.set_xlabel("$k/a_eH_e$")
-    ax.set_ylabel(r"$|\beta_k|^2 k^4/\pi^2 $")
+    # ax.set_xlabel("$k/a_eH_e$")
+    # ax.set_ylabel(r"$\rho_k = |\beta_k|^2 k^4/\pi^2 $")
+    ax.set_xlabel(r"$f / \textrm{Hz}$")
+    ax.set_ylabel(r"$\Omega_{\textrm{GW}, 0}h^2$")
+    # ax.set_ylim((1e-6, 1e2))
     
     ax.legend(loc="upper right")
     fig.tight_layout()
@@ -665,7 +682,7 @@ def plot_mtilde(dn):
     
     # WARNING: need to change n
     T = 1e-05 
-    n = 2
+    n = 4
     Γ = (7-n) / (np.sqrt(3)*n) * T**(4/n) * (30/106/np.pi**2)**(-1/n) * ρphi**(1/2 - 1/n)
 
     fig, ax = plt.subplots()
@@ -676,8 +693,8 @@ def plot_mtilde(dn):
 
     ax.set_yscale("log")
     ax.set_xlabel("$N$")
-    ax.set_xlim((np.log(a_e), N[-1]))
-    ax.set_ylim((1e-6, 1e-5))
+    # ax.set_xlim((np.log(a_e), N[-1]))
+    # ax.set_ylim((1e-6, 1e-5))
     
     out_dn = dn.replace("data", "figs")
     fig_fn = join(out_dn, "mtilde.pdf")
@@ -692,17 +709,26 @@ def plot_fourier(dn):
     plt.savefig(dn.replace("data", "figs")+"four_coef.pdf")
 
 if __name__ == "__main__":
-    dn = "../data/TModel-n=2/r=1.0e-02-T=1.0e-04/"
+    # dn = "../data/TModel-n=2/r=1.0e-01-T=1.0e-04/"
+    # dn = "../data/TModel-n=2/r=1.0e-02-T=1.0e-05/"
+    # dn = "../data/TModel-n=2/r=1.0e-03-T=1.0e-04/"
+
+    # dn = "../data/TModel-n=4/r=1.0e-01-T=1.0e-05/"
     # dn = "../data/TModel-n=4/r=1.0e-02-T=1.0e-05/"
+    # dn = "../data/TModel-n=4/r=1.0e-03-T=1.0e-05/"
+
+    # dn = "../data/TModel-n=6/r=1.0e-01-T=1.0e-05/"
     # dn = "../data/TModel-n=6/r=1.0e-02-T=1.0e-05/"
+    dn = "../data/TModel-n=6/r=1.0e-03-T=1.0e-05/"
+
     # dn = "../data/Chaotic2/r=1.0e-02-T=5.0e-05/"
     # dn = "../data/Chaotic4/r=1.0e-02-T=1.0e-05/"
     # dn = "../data/Chaotic6/r=1.0e-02-T=1.0e-06/"
-    plot_back_single(dn)
-    # plot_spec_single(dn)
+    # plot_back_single(dn)
+    plot_spec_single(dn)
     # plot_fourier(dn)
     # plot_Boltzmann_single_j(dn)
-    # plot_mtilde(dn)
+    plot_mtilde(dn)
 
     # plot_all_quadratic([f"../data/TModel-n=2/r=1.0e-02-T={x}" for x in ["1.0e-04", "5.0e-05", "1.0e-05"]])
 
@@ -715,6 +741,7 @@ if __name__ == "__main__":
     # plot_all("../data/TModel-n=2/")
     
     # plot_comp_chaotic_tmodel()
+    # compare_k_rh()
     
     ################################### n = 4
     # plot_all("../data/Chaotic4/") 

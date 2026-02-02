@@ -92,9 +92,11 @@ function save_eom(ϕᵢ, r, T, n, data_dir::String)
     if n == 2 
         dtmax = 1/get_m_eff(0.0, model)/200
     elseif n == 4
-        dtmax = 1/(10*sqrt(get_λ(model))*2*sqrt(3)) / 100000
+        # dtmax = 1/(10*sqrt(get_λ(model))*2*sqrt(3)) / 100000
+        dtmax = 1/(10*sqrt(get_λ(model))*2*sqrt(3)) / 10000
     elseif n == 6
-        dtmax = 1/(10*sqrt(get_λ(model))*2*sqrt(3)) / 500000
+        # dtmax = 1/(10*sqrt(get_λ(model))*2*sqrt(3)) / 500000
+        dtmax = 1/(10*sqrt(get_λ(model))*2*sqrt(3)) / 5000
     end
     @show dtmax
     
@@ -113,14 +115,14 @@ function save_single(ϕᵢ, r, T, n, num_k, k_min=-2, k_max=2)
     mkpath(data_dir)
     @info "Model parameter (in GeV): " r, T
     
-    # save_eom(ϕᵢ, r, T, n, data_dir)
+    save_eom(ϕᵢ, r, T, n, data_dir)
     if !isnothing(num_k)
         # PPs.save_all(num_k, data_dir, k_min, k_max)
         if n == 2
             Boltzmann.save_all(num_k*5, data_dir, :quadratic, k_min, k_max, true)
         elseif n == 4
             PPs.save_all_ana(num_k*5, data_dir, :quartic, k_min, k_max)
-            # Boltzmann.save_all(num_k*5, data_dir, :quartic, k_min, k_max, true)
+            Boltzmann.save_all(num_k*5, data_dir, :quartic, k_min, k_max, true)
         elseif n == 6
             PPs.save_all_ana(num_k*5, data_dir, :sextic, k_min, k_max)
             # Boltzmann.save_all(num_k*5, data_dir, :sextic, k_min, k_max, true)

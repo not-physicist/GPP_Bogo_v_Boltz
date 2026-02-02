@@ -264,6 +264,7 @@ end
 
 """
 get the Bogoliubov coefficient analytically using stationary point approximation
+    k in a_e H_e unit
 """
 function get_beta_bogo_spa(eom, k::Vector, model::Symbol, dn)
     # how many fourier modes to compute
@@ -293,24 +294,37 @@ function get_beta_bogo_spa(eom, k::Vector, model::Symbol, dn)
     ρ_new = Interpolate(eom.t[a_mask], ρ_ϕ[a_mask]).(t_new)
     # @show a_new[1], H_new[1]
     # @info "a_e H_e / a H =" eom.aₑ * H_new[1] ./ (H_new .* a_new) 
-    
+    aH_e = a_new[1] * H_new[1]
+   
     N, indices, m_tilde, c_n, _ = get_four_coeff(num_j, t_new, V_new ./ ρ_new, dn)
     # @show size(m_tilde), size(indices)
     # @info @sprintf "At first minimum: a/a_e = %e" a_new[indices[1]]/a_new[1]
     # @info @sprintf "At first minimum: m_tilde/H = %e" m_tilde[1] / H_new[1]
     @info @sprintf "At first minimum: k/a_e H_e = %e" a_new[indices[1]]/a_new[1] * m_tilde[1] / H_new[1]
     
-    dm = get_deriv_BSpline(t_new[indices[1:end-1]], m_tilde, 2, 1)
+    dm = try
+        get_deriv_BSpline(t_new[indices[1:end-1]], m_tilde, 2, 1)
+    catch e 
+        if isa(e, BoundsError)
+            @error "Maybe you forgot to delete and re-compute the fourier coefficients?"
+            return nothing
+        end
+    end
     ddm = get_deriv_BSpline(t_new[indices[1:end-1]], m_tilde, 3, 2)
+    # @show log.(abs.(dm)) log.(abs.(ddm))
     # display(log.(abs.(ddm)))
     # @show N, size(indices), size(dm), size(ddm)
     # size of dm, ddm: N (# of oscillations)
     # size of indices: N+1
     
+    t_t_e = @. t_new[indices] - t_new[1]
+    τ_τ_e = @. τ_new[indices] - τ_new[1]
+  
     β = zeros(ComplexF64, size(k))
     for j in 1:num_j
-    # interate over Fourier modes
-        X = @. a_new[indices[1:end-1]] * (dm*t_new[indices[1:end-1]] + m_tilde) * j / (a_new[1] * H_new[1])
+    # iterate over Fourier modes
+
+        X = @. a_new[indices[1:end-1]] * (dm*t_t_e[1:end-1] + m_tilde) * j / aH_e
         # X = @. a_new[indices[1:end-1]] * (2 / 6 * m_tilde) * j / a_new[1] / H_new[1]
         # @show size(X)
 
@@ -319,24 +333,26 @@ function get_beta_bogo_spa(eom, k::Vector, model::Symbol, dn)
         Threads.@threads for i in 1:N
             i2 = indices[i]
             # g''
-            gpp = -2*j*a_new[i2]^2 * (ddm[i]*t_new[i2] + dm[i]*(2+t_new[i2]*H_new[i2]) + m_tilde[i]*H_new[i2])
+            gpp = 2*j*a_new[i2]^2 * (ddm[i]*t_t_e[i] + dm[i]*(2+t_t_e[i]*H_new[i2]) + m_tilde[i]*H_new[i2])
             # use "quasi"-analytical expression
             # gpp = 2*j * (a_new[i2] * H_new[i2])^2 * m_tilde[i] / H_new[i2]
 
             # the phase 
-            ψ = -2 * (j * m_tilde[i] * t_new[i2] + X[i] * a_new[1] * H_new[1]*τ_new[i2]) - sign(gpp) * π / 4
+            ψ = 2 * (j * m_tilde[i] * t_t_e[i] - X[i] * aH_e * τ_τ_e[i]) - sign(gpp) * π / 4
             # @show ψ
             
+            # Y[i] = 3.0im/2 * (a_new[i2] * H_new[i2])^2 / (a_new[1] * H_new[1]) / (X[i] * j) * c_n[1, j] * sqrt(π/abs(gpp)) * exp(1.0im * ψ)
+            Y[i] = -3.0im/2 * (a_new[i2] * H_new[i2])^2 / (X[i] * aH_e) * c_n[end, j] * sqrt(2π/abs(gpp)) * exp(1.0im * ψ)
             # TODO: potential improvement: use the real fourier coefficients instead of the first set. 
             # Seems very complicated as the index i corresponds to elements of X, which are not "properly" ordered.
-            Y[i] = 3.0im/2 * (a_new[i2] * H_new[i2])^2 / (a_new[1] * H_new[1]) / (X[i] * j) * abs(c_n[1, j]) * sqrt(π/abs(gpp)) * exp(1.0im * ψ)
         end
         # @show size(X) size(Y)
         # @show X[1]
 
         # if j == 1
-        #     display(X)
-        #     display(Y)
+            # display(X)
+            # display(abs.(Y))
+            # @info X, abs.(Y)
         # end
 
         if model == :quadratic
@@ -350,6 +366,11 @@ function get_beta_bogo_spa(eom, k::Vector, model::Symbol, dn)
         else
             tmp = Interpolate(reverse(X), reverse(Y), extrapolate=LinearInterpolations.Constant(0.0)).(k)
             β += tmp
+
+            # sort the X <-> k, for small r n=6 it seems that X could be negative; need to sort it first
+            # sort_i = sortperm(X)
+            # tmp = Interpolate(X[sort_i], Y[sort_i], extrapolate=LinearInterpolations.Constant(0.0)).(k)
+            # β += tmp
         end
 
     end
@@ -500,16 +521,17 @@ function save_all_ana(num_k, data_dir, model, log_k_i=0, log_k_f=2)
     f_spa_ana = @time get_beta_bogo_spa_ana(eom, k, model, data_dir)
     β_fast = @time get_beta_bogo_fast(eom, k)
     β_trans = @time get_beta_bogo_trans(k / eom.aₑ / eom.Hₑ, model)
-    
+
+    fn = data_dir * "spec_bogo_ana.npz" 
     if f_spa_ana == false 
-        npzwrite(data_dir * "spec_bogo_ana.npz", Dict(
+        npzwrite(fn, Dict(
             "k" => k ./ eom.aₑ / eom.Hₑ,
             "f_spa" => f_spa,
             "f_fast" => abs2.(β_fast),
             "f_comb" => abs2.(β_fast .+ β_trans)
         ))
     else
-        npzwrite(data_dir * "spec_bogo_ana.npz", Dict(
+        npzwrite(fn, Dict(
             "k" => k ./ eom.aₑ / eom.Hₑ,
             "f_spa" => f_spa,
             "f_spa_ana" => f_spa_ana,
