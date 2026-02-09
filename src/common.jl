@@ -5,7 +5,7 @@ module Commons
 
 # using NPZ, NumericalIntegration, LinearInterpolations
 # using Interpolations, JLD2
-using OrdinaryDiffEq, BSplineKit, Peaks, Serialization, QuadGK, ProgressBars, NPZ
+using OrdinaryDiffEq, BSplineKit, Peaks, Serialization, QuadGK, ProgressBars, NPZ, Polynomials
 
 # export logspace, read_ode, ODEData, get_end, LinearInterpolations, dump_struct, double_trap
 
@@ -152,6 +152,47 @@ function get_four_coeff(num_j, t, V_ρ, dn)
     npzwrite(dn * "four_coef.npz", Dict("c_n" => c_n))
 
     return N, indices, m_tilde, c_n, mdm2
+end
+
+"""
+fit ̃m(t) and get its derivatives
+    expect they follow some kind of power law (with runnings)
+
+arguments: all have the same dimension (one point per oscillation)
+"""
+function get_m_fit(m, N, H, dH)
+    @show size(m) size(N) size(H) size(dH)
+
+    # option 1: using BSpline to interpolate, BAD
+    #=
+    dm = try
+        get_deriv_BSpline(t_new[indices[1:end-1]], m_tilde, 2, 1)
+    catch e 
+        if isa(e, BoundsError)
+            @error "Maybe you forgot to delete and re-compute the fourier coefficients?"
+            return nothing
+        end
+    end
+    ddm = get_deriv_BSpline(t_new[indices[1:end-1]], m_tilde, 3, 2)
+    # size of dm, ddm: N (# of oscillations)
+    # size of indices: N+1
+    =#
+    
+    # option 2: fit ̃m against e-folds
+    N_N_e = @. N - N[1]
+    m_m0 = @. m/m[1]
+    # @show N_N_e, m_tilde_m0
+    p = Polynomials.fit(N_N_e, log.(m_m0), 6); map(x -> round(x, digits=4), p)
+    @show "Fitted polynomials: " p
+    m_fit = @. exp(p.(N_N_e)) * m[1]
+    @info "Log10 of the relative error of m_tilde fitting at datapoints:" @. log10(abs((m - m_fit)/m))
+    
+    dm = @. derivative(p).(N_N_e) * ( exp(p(N_N_e)) * m[1] * H)
+    # @info "Log10 of the relative error of dm/dt_fit at datapoints" @. log10(abs.((dm - dm_dt_fit)/dm))
+    ddm = @. derivative(p, 2).(N_N_e) * m_fit * H^2 + dm * (dm*m_fit^2*H + m_fit*dH)
+    # @info "Log10 of the relative error of d2m/dt2_fit at datapoints" @. log10(abs.((ddm - d2m_dt2_fit)/ddm))
+
+    return m_fit, dm, ddm
 end
 
 end

@@ -93,9 +93,11 @@ def plot_back_single(dn):
     ###############################
     fig, ax = plt.subplots()
     rho2_H = (Omega_ϕ * 3 * H**2)**2 / H
+    rho2_tot_H = (3 * H**2)**2 / H
     rho2_H_ana = (3 * H_e**2 * (a_e / a)**3)**2 / (H_e*(a/a_e)**(-3/2))
-    ax.plot(N[N > N_e], rho2_H[N > N_e], color="k")
+    ax.plot(N[N > N_e], rho2_H[N > N_e], color="k", label=r"$\rho_{\phi}/H$")
     ax.plot(N[N > N_e], rho2_H_ana[N > N_e], color="k", ls="--")
+    ax.plot(N[N > N_e], rho2_tot_H[N > N_e], color="tab:blue", label=r"$\rho_\textrm{tot}/H$")
     # ax.plot(N[N > N_e], np.interp(N[N > N_e], ))
     
     ax.set_xlabel(r"$\ln(a)$")
@@ -104,6 +106,7 @@ def plot_back_single(dn):
     # ax.set_ylim(1e-24, 1e-11)
 
     plt.tight_layout()
+    plt.legend(loc="lower left")
     out_dn = dn.replace("data", "figs")
     Path(out_dn).mkdir(parents=True, exist_ok=True)
     fig_fn = join(out_dn, "rho2_H.pdf")
@@ -257,7 +260,7 @@ def plot_spec_single(dn):
     try:
         fn = join(dn, "spec_bogo_ana.npz")
         data = np.load(fn)
-        ax.plot(k_boltz[mask], f_boltz[mask], color="tab:orange", ls="--", label="exact Boltz.")
+        # ax.plot(k_boltz[mask], f_boltz[mask], color="tab:orange", ls="--", label="exact Boltz.")
         ax.plot(data["k"], data["f_spa"], label="s.p.a.")
         # ax.plot(data["k"], data["f_fast"], color="tab:red", ls="dotted", label="fast Bogo.")
         # ax.plot(data["k"], data["f_comb"], color="tab:purple", ls="dotted", label="comb.")
@@ -538,42 +541,48 @@ def plot_all_n():
     plot the energy parameter of models with different n's together
     Fix the reheating temp also
     """
-    r = 0.01 
+    rs = [0.01, 0.001]
     ns = [2, 4, 6]
+    # ns = [2, 4]
     Ts = [1e-5, 1e-5, 1e-5]
 
+    colors = ["tab:blue", "tab:red", "tab:orange"]
+    ls = ["solid", "dotted"]
+
     fig, ax = plt.subplots()
-    for n, T in zip(ns, Ts):
-        dn = f"../data/TModel-n={n}/r={r:.1e}-T={T:.1e}/"
+    for i, r in enumerate(rs):
+        for j, (n, T) in enumerate(zip(ns, Ts)):
+            dn = f"../data/TModel-n={n}/r={r:.1e}-T={T:.1e}/"
 
-        # print(dn)
-        # plot_back_single(dn)
-        # plot_spec_single(dn)
+            print(dn)
+            # plot_back_single(dn)
+            # plot_spec_single(dn)
 
-        fn = join(dn, "eom.npz")
-        data = np.load(fn)
-        H_e = data["H_e"]
-        print("He = ", H_e)
-        a_e = data["a_e"]
-        a_rh = data["a_rh"]
-        print("a_e/a_rh = ", a_e/a_rh)
+            fn = join(dn, "eom.npz")
+            data = np.load(fn)
+            H_e = data["H_e"]
+            print("He = ", H_e)
+            a_e = data["a_e"]
+            a_rh = data["a_rh"]
+            # print("a_e/a_rh = ", a_e/a_rh)
 
-        fn = join(dn, "spec_bogo.npz")
-        data = np.load(fn)
-        k = data["k"]
-        ρ = data["rho"]
+            fn = join(dn, "spec_bogo.npz")
+            data = np.load(fn)
+            k = data["k"]
+            ρ = data["rho"]
 
-        f = formula.get_f(k, a_e/a_rh, H_e, T)
-        Ω = formula.get_Ω_gw0(ρ, a_e/a_rh, H_e, T)
-    
-        n = dn.split("/")[2][-1]
-        ax.plot(f, Ω, label=f"$n={n}$")
+            f = formula.get_f(k, a_e/a_rh, H_e, T)
+            Ω = formula.get_Ω_gw0(ρ, a_e/a_rh, H_e, T)
+        
+            n = dn.split("/")[2][-1]
+            ax.plot(f, Ω, label=f"$n={n}$", color=colors[j], ls=ls[i])
+            print(50*"-")
     
     ax.set_xscale("log")
     ax.set_yscale("log")
     ax.set_ylim((1e-20, 1e-10))
     ax.set_xlabel(r"$f/\textrm{Hz}$")
-    ax.set_ylabel(r"$\Omega_{\textrm{gw}, 0} h^2$")
+    ax.set_ylabel(r"$\Omega_{\textrm{GW}, 0} h^2$")
     plt.legend()
     plt.savefig("../figs/Omega_all_n.pdf", bbox_inches="tight")
     plt.close()
@@ -592,17 +601,14 @@ def compare_k_rh():
 
         fn_back = join(dn, "eom.npz")
         data_back = np.load(fn_back)
-        a_e_rh = data_back["a_e"] / data_back["a_rh"]
         H_e = data_back["H_e"]
 
         k = data["k"]
         ρ = data["rho"]
         # n = data["n"]
-        f = formula.get_f(k, a_e_rh, H_e, T)
-        Ogw = formula.get_Ω_gw0(ρ, a_e_rh, H_e, T)
 
-        # l = ax.plot(k, ρ, label=label)[0]
-        l = ax.plot(f, Ogw, label=label)[0]
+        l = ax.plot(k, ρ, label=label)[0]
+        # l = ax.plot(f, Ogw, label=label)[0]
 
         data = np.load(join(dn, "eom.npz"))
         a_rh = data["a_rh"]
@@ -613,17 +619,22 @@ def compare_k_rh():
         H = data["H"]
         H_rh = np.interp(a_rh, a, H)
         k_rh = a_rh * H_rh / a_e / H_e
-        f_rh = formula.get_f(k_rh, a_e_rh, H_e, T)
-        # ax.plot([k_rh, k_rh], [1e-10, 100], ls="--", c=l.get_color(), alpha=0.5)
-        ax.plot([f_rh, f_rh], [np.amin(Ogw), np.amax(Ogw)], ls="--", c=l.get_color(), alpha=0.5)
+        ax.plot([k_rh, k_rh], [1e-10, 100], ls="--", c=l.get_color(), alpha=0.5)
+
+        # to plot \Omega directly
+        # a_e_rh = data_back["a_e"] / data_back["a_rh"]
+        # f = formula.get_f(k, a_e_rh, H_e, T)
+        # Ogw = formula.get_Ω_gw0(ρ, a_e_rh, H_e, T)
+        # f_rh = formula.get_f(k_rh, a_e_rh, H_e, T)
+        # ax.plot([f_rh, f_rh], [np.amin(Ogw), np.amax(Ogw)], ls="--", c=l.get_color(), alpha=0.5)
 
     ax.set_xscale("log")
     ax.set_yscale("log")
-    # ax.set_xlabel("$k/a_eH_e$")
-    # ax.set_ylabel(r"$\rho_k = |\beta_k|^2 k^4/\pi^2 $")
-    ax.set_xlabel(r"$f / \textrm{Hz}$")
-    ax.set_ylabel(r"$\Omega_{\textrm{GW}, 0}h^2$")
-    # ax.set_ylim((1e-6, 1e2))
+    ax.set_xlabel("$k/a_eH_e$")
+    ax.set_ylabel(r"$\rho_k = |\beta_k|^2 k^4/\pi^2 $")
+    # ax.set_xlabel(r"$f / \textrm{Hz}$")
+    # ax.set_ylabel(r"$\Omega_{\textrm{GW}, 0}h^2$")
+    ax.set_ylim((1e-9, 1e2))
     
     ax.legend(loc="upper right")
     fig.tight_layout()
@@ -675,25 +686,32 @@ def plot_mtilde(dn):
     ρphi = 3 * H**2 * Ωphi
     a_e = data["a_e"]
     H_e = data["H_e"]
+    N_e = np.log(a_e)
 
     data = np.load(join(dn, "m_tilde.npz"))
     m = data["m"]
     a_n = data["a"]
     
     # WARNING: need to change n
-    T = 1e-05 
-    n = 4
+    T = 1e-04
+    n = 2
     Γ = (7-n) / (np.sqrt(3)*n) * T**(4/n) * (30/106/np.pi**2)**(-1/n) * ρphi**(1/2 - 1/n)
 
     fig, ax = plt.subplots()
     ax.plot([np.log(a_e), np.log(a_e)], [1e-12, 1e-4], color="gray", ls="--")
     ax.plot(N, H, label=r"$H$")
     ax.plot(N, Γ, label=r"$\Gamma$")
-    ax.plot(np.log(a_n)[:-1], m, label=r"$\tilde{m}$", marker="+")
+    ax.plot(np.log(a_n)[:-1], m, label=r"$\tilde{m}$", ls="dotted", color="k")
+
+    # do a power law fitting 
+    _f = lambda x, a, b, c, d: a+b*x+c*x**2+d*x**3
+    popt, pcov = curve_fit(_f, np.log(a_n[:-1])-N_e, np.log(m/m[0]))
+    print("Fitting parameter", popt, pcov)
+    ax.plot(N[N>N_e], np.exp(_f(N[N>N_e]-N_e, *popt))*m[0], label=r"$\tilde{m}$, fit", color="tab:purple", alpha=0.5)
 
     ax.set_yscale("log")
     ax.set_xlabel("$N$")
-    # ax.set_xlim((np.log(a_e), N[-1]))
+    ax.set_xlim((np.log(a_e)-2, N[-1]+2))
     # ax.set_ylim((1e-6, 1e-5))
     
     out_dn = dn.replace("data", "figs")
@@ -709,47 +727,27 @@ def plot_fourier(dn):
     plt.savefig(dn.replace("data", "figs")+"four_coef.pdf")
 
 if __name__ == "__main__":
+    ################################## n = 2
     # dn = "../data/TModel-n=2/r=1.0e-01-T=1.0e-04/"
-    # dn = "../data/TModel-n=2/r=1.0e-02-T=1.0e-05/"
-    # dn = "../data/TModel-n=2/r=1.0e-03-T=1.0e-04/"
+    # dn = "../data/TModel-n=2/r=1.0e-02-T=1.0e-04/"
+    # dn = "../data/TModel-n=2/r=1.0e-03-T=1.0e-05/"
 
+    ################################### n = 4
     # dn = "../data/TModel-n=4/r=1.0e-01-T=1.0e-05/"
     # dn = "../data/TModel-n=4/r=1.0e-02-T=1.0e-05/"
     # dn = "../data/TModel-n=4/r=1.0e-03-T=1.0e-05/"
 
+    ################################### n = 6
     # dn = "../data/TModel-n=6/r=1.0e-01-T=1.0e-05/"
-    # dn = "../data/TModel-n=6/r=1.0e-02-T=1.0e-05/"
-    dn = "../data/TModel-n=6/r=1.0e-03-T=1.0e-05/"
-
-    # dn = "../data/Chaotic2/r=1.0e-02-T=5.0e-05/"
-    # dn = "../data/Chaotic4/r=1.0e-02-T=1.0e-05/"
-    # dn = "../data/Chaotic6/r=1.0e-02-T=1.0e-06/"
+    dn = "../data/TModel-n=6/r=1.0e-02-T=1.0e-05/"
+    # dn = "../data/TModel-n=6/r=1.0e-03-T=1.0e-05/"
     # plot_back_single(dn)
     plot_spec_single(dn)
     # plot_fourier(dn)
     # plot_Boltzmann_single_j(dn)
-    plot_mtilde(dn)
+    # plot_mtilde(dn)
 
     # plot_all_quadratic([f"../data/TModel-n=2/r=1.0e-02-T={x}" for x in ["1.0e-04", "5.0e-05", "1.0e-05"]])
-
-    ################################## n = 2
-    # plot_all("../data/Chaotic2/")
-
-    # check_H("../data/Chaotic2/m=1.0e-04-Γ=1.0e-07/")
-    # check_H("../data/Chaotic2/m=1.0e-05-Γ=1.0e-06/")
-
-    # plot_all("../data/TModel-n=2/")
     
-    # plot_comp_chaotic_tmodel()
     # compare_k_rh()
-    
-    ################################### n = 4
-    # plot_all("../data/Chaotic4/") 
-    # plot_all("../data/TModel-n=4/")
-    ################################### n = 6
-    # plot_back_single("../data/Chaotic6/r=4.5e-03-Γ=1.0e-12")
-    # plot_back_single("../data/Chaotic6/r=4.5e-03-Γ=1.0e-10")
-    # plot_all("../data/Chaotic6/")
-
     # plot_all_n()
-    # compare_k_rh()

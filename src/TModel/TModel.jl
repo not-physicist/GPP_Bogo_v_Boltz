@@ -90,7 +90,8 @@ function save_eom(ϕᵢ, r, T, n, data_dir::String)
     # α = 3 * (n-2)/(n+2)
     p = (_V, _dV, T, n)
     if n == 2 
-        dtmax = 1/get_m_eff(0.0, model)/200
+        # dtmax = 1/get_m_eff(0.0, model)/100
+        dtmax = 1/get_m_eff(0.0, model)/10
     elseif n == 4
         # dtmax = 1/(10*sqrt(get_λ(model))*2*sqrt(3)) / 100000
         dtmax = 1/(10*sqrt(get_λ(model))*2*sqrt(3)) / 10000
@@ -115,10 +116,11 @@ function save_single(ϕᵢ, r, T, n, num_k, k_min=-2, k_max=2)
     mkpath(data_dir)
     @info "Model parameter (in GeV): " r, T
     
-    save_eom(ϕᵢ, r, T, n, data_dir)
+    # save_eom(ϕᵢ, r, T, n, data_dir)
     if !isnothing(num_k)
         # PPs.save_all(num_k, data_dir, k_min, k_max)
         if n == 2
+            PPs.save_all_ana(num_k*5, data_dir, :quadratic, k_min, k_max)
             Boltzmann.save_all(num_k*5, data_dir, :quadratic, k_min, k_max, true)
         elseif n == 4
             PPs.save_all_ana(num_k*5, data_dir, :quartic, k_min, k_max)

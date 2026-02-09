@@ -8,6 +8,7 @@ using BSplineKit
 using Peaks
 using QuadGK
 using SpecialFunctions: hankelh2
+# using CurveFit
 
 using ..Commons
 
@@ -301,22 +302,12 @@ function get_beta_bogo_spa(eom, k::Vector, model::Symbol, dn)
     # @info @sprintf "At first minimum: a/a_e = %e" a_new[indices[1]]/a_new[1]
     # @info @sprintf "At first minimum: m_tilde/H = %e" m_tilde[1] / H_new[1]
     @info @sprintf "At first minimum: k/a_e H_e = %e" a_new[indices[1]]/a_new[1] * m_tilde[1] / H_new[1]
-    
-    dm = try
-        get_deriv_BSpline(t_new[indices[1:end-1]], m_tilde, 2, 1)
-    catch e 
-        if isa(e, BoundsError)
-            @error "Maybe you forgot to delete and re-compute the fourier coefficients?"
-            return nothing
-        end
-    end
-    ddm = get_deriv_BSpline(t_new[indices[1:end-1]], m_tilde, 3, 2)
-    # @show log.(abs.(dm)) log.(abs.(ddm))
-    # display(log.(abs.(ddm)))
-    # @show N, size(indices), size(dm), size(ddm)
-    # size of dm, ddm: N (# of oscillations)
-    # size of indices: N+1
-    
+    # @info m_tilde 
+
+    m_fit, dm, ddm = Commons.get_m_fit(m_tilde, log.(a_new[indices[1:end-1]]), 
+                                        H_new[indices[1:end-1]], 
+                                        (diff(H_new)./diff(t_new))[indices[1:end-1]])
+      
     t_t_e = @. t_new[indices] - t_new[1]
     τ_τ_e = @. τ_new[indices] - τ_new[1]
   
@@ -324,8 +315,8 @@ function get_beta_bogo_spa(eom, k::Vector, model::Symbol, dn)
     for j in 1:num_j
     # iterate over Fourier modes
 
-        X = @. a_new[indices[1:end-1]] * (dm*t_t_e[1:end-1] + m_tilde) * j / aH_e
-        # X = @. a_new[indices[1:end-1]] * (2 / 6 * m_tilde) * j / a_new[1] / H_new[1]
+        X = @. a_new[indices[1:end-1]] * (dm*t_t_e[1:end-1] + m_fit) * j / aH_e
+        # X = @. a_new[indices[1:end-1]] * (m_tilde[1]) * j / aH_e
         # @show size(X)
 
         # meant to be the (magnitude of) Bogo. coefficient
@@ -333,34 +324,36 @@ function get_beta_bogo_spa(eom, k::Vector, model::Symbol, dn)
         Threads.@threads for i in 1:N
             i2 = indices[i]
             # g''
-            gpp = 2*j*a_new[i2]^2 * (ddm[i]*t_t_e[i] + dm[i]*(2+t_t_e[i]*H_new[i2]) + m_tilde[i]*H_new[i2])
-            # use "quasi"-analytical expression
-            # gpp = 2*j * (a_new[i2] * H_new[i2])^2 * m_tilde[i] / H_new[i2]
+            gpp = 2*j*a_new[i2]^2 * (ddm[i]*t_t_e[i] + dm[i]*(2+t_t_e[i]*H_new[i2]) + m_fit[i]*H_new[i2])
+            # gpp = 2*j*a_new[i2]^2 * (m_tilde[1]*H_new[i2])
 
             # the phase 
-            ψ = 2 * (j * m_tilde[i] * t_t_e[i] - X[i] * aH_e * τ_τ_e[i]) - sign(gpp) * π / 4
+            ψ = 2 * (j * m_fit[i] * t_t_e[i] - X[i] * aH_e * τ_τ_e[i]) - sign(gpp) * π / 4
             # @show ψ
             
-            # Y[i] = 3.0im/2 * (a_new[i2] * H_new[i2])^2 / (a_new[1] * H_new[1]) / (X[i] * j) * c_n[1, j] * sqrt(π/abs(gpp)) * exp(1.0im * ψ)
-            Y[i] = -3.0im/2 * (a_new[i2] * H_new[i2])^2 / (X[i] * aH_e) * c_n[end, j] * sqrt(2π/abs(gpp)) * exp(1.0im * ψ)
+            Y[i] = -3.0im/2 * (a_new[i2] * H_new[i2])^2 / (X[i] * aH_e) * c_n[1, j] * sqrt(2π/abs(gpp)) * exp(1.0im * ψ)
             # TODO: potential improvement: use the real fourier coefficients instead of the first set. 
-            # Seems very complicated as the index i corresponds to elements of X, which are not "properly" ordered.
+            # Seems complicated as the index i corresponds to elements of X, which are not "properly" ordered.
         end
         # @show size(X) size(Y)
         # @show X[1]
 
-        # if j == 1
-            # display(X)
+        if j == 1
+            display(X)
             # display(abs.(Y))
-            # @info X, abs.(Y)
-        # end
+            # @info diff(X), diff(abs.(Y))
+        end
 
         if model == :quadratic
             tmp = Interpolate(X, Y, extrapolate=LinearInterpolations.Constant(0.0)).(k)
             β += tmp
         elseif model == :quartic 
-            tmp = Interpolate(X[1:argmax(X)], Y[1:argmax(X)], extrapolate=LinearInterpolations.Constant(0.0)).(k)
-            β += tmp
+            try
+                tmp = Interpolate(X[1:argmax(X)], Y[1:argmax(X)], extrapolate=LinearInterpolations.Constant(0.0)).(k)
+                β += tmp
+            catch 
+
+            end
             tmp2 = Interpolate(X[end:-1:argmax(X)], Y[end:-1:argmax(X)], extrapolate=LinearInterpolations.Constant(0.0)).(k)
             β += tmp2
         else
@@ -384,6 +377,8 @@ function get_beta_bogo_spa_ana(eom, k::Vector, model::Symbol, dn)
     if model == :sextic 
         n = 6
         num_j = 20
+    elseif  model == :quadratic
+        return false
     elseif  model == :quartic
         n = 4 
         return false
@@ -493,6 +488,8 @@ function get_beta_bogo_trans(k::Vector, model)
         ω = 1/3 
     elseif model == :sextic 
         ω = 1/2 
+    elseif model == :quadratic 
+        ω = 0.0
     else 
         @error "dont know the model" 
         return nothing
@@ -519,24 +516,25 @@ function save_all_ana(num_k, data_dir, model, log_k_i=0, log_k_f=2)
     k = @. logspace(log_k_i, log_k_f, num_k) * eom.aₑ * eom.Hₑ
     f_spa = @time get_beta_bogo_spa(eom, k / eom.aₑ / eom.Hₑ, model, data_dir)
     f_spa_ana = @time get_beta_bogo_spa_ana(eom, k, model, data_dir)
-    β_fast = @time get_beta_bogo_fast(eom, k)
-    β_trans = @time get_beta_bogo_trans(k / eom.aₑ / eom.Hₑ, model)
+    # β_fast = @time get_beta_bogo_fast(eom, k)
+    # β_trans = @time get_beta_bogo_trans(k / eom.aₑ / eom.Hₑ, model)
+    # Main.@infiltrate
 
     fn = data_dir * "spec_bogo_ana.npz" 
     if f_spa_ana == false 
         npzwrite(fn, Dict(
             "k" => k ./ eom.aₑ / eom.Hₑ,
             "f_spa" => f_spa,
-            "f_fast" => abs2.(β_fast),
-            "f_comb" => abs2.(β_fast .+ β_trans)
+            # "f_fast" => abs2.(β_fast),
+            # "f_comb" => abs2.(β_fast .+ β_trans)
         ))
     else
         npzwrite(fn, Dict(
             "k" => k ./ eom.aₑ / eom.Hₑ,
             "f_spa" => f_spa,
             "f_spa_ana" => f_spa_ana,
-            "f_fast" => abs2.(β_fast),
-            "f_comb" => abs2.(β_fast .+ β_trans)
+            # "f_fast" => abs2.(β_fast),
+            # "f_comb" => abs2.(β_fast .+ β_trans)
         ))
     end
 
