@@ -63,7 +63,7 @@ function get_V₀(n::Int, ϕ_cmb::Real, α::Real)
 end
 
 function get_α(n::Int, nₛ::Real, r::Real)
-    return 32/3 * n^2 * r / (n^2*(8*(1-nₛ) - r)^2 - 4*r^2)
+    return 64/3 * n^2 * r / (n^2*(8*(1-nₛ) - r)^2 - 4*r^2)
 end
 
 """

@@ -36,7 +36,7 @@ function save_all_TModel()
     TModel.save_single(6.5, r, 1e-5, 6, num_k)
     
     r = 0.001
-    TModel.save_single(3.0, r, 1e-4, 2, num_k)
+    TModel.save_single(2.8, r, 1e-5, 2, num_k)
     TModel.save_single(3.2, r, 1e-5, 4, num_k)
     TModel.save_single(3.4, r, 1e-5, 6, num_k)
  

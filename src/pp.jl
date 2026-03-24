@@ -78,7 +78,7 @@ function solve_all_spec_alpha(k::Vector, eom)
 
         prob = ODEProblem{false}(get_diff_eq_alpha, u₀, tspan, p)
         # sol = @time solve(prob, RK4())
-        sol = solve(prob, Vern9(), reltol=1e-12, abstol=1e-12, save_everystep=false, maxiters=1e8, isoutofdomain=get_alpha_beta_domain)
+        sol = solve(prob, Vern9(), reltol=1e-15, abstol=1e-15, save_everystep=false, maxiters=1e8, isoutofdomain=get_alpha_beta_domain)
         # sol = solve(prob, AutoVern9(Rodas5P(autodiff=false)), reltol=1e-12, abstol=1e-12, save_everystep=false, maxiters=1e8, isoutofdomain=get_alpha_beta_domain)
 
         α[i] = sol[1, end]
@@ -139,9 +139,9 @@ function solve_diff_mode(k::Real, eom)
     # u₀ = @SVector [1/sqrt(2*k), -1.0im*k/sqrt(2*k)] 
     u₀ = @SVector [1/sqrt(2*ω₀), -1.0im*ω₀/sqrt(2*ω₀)] 
     
-    condition(u, t, integrator) = (abs(1-get_ω2(t)/k^2) < 1e-4)
-    affect!(integrator) = terminate!(integrator)
-    cb = DiscreteCallback(condition, affect!)
+    # condition(u, t, integrator) = (abs(1-get_ω2(t)/k^2) < 1e-4)
+    # affect!(integrator) = terminate!(integrator)
+    # cb = DiscreteCallback(condition, affect!)
     prob = ODEProblem{false}(get_diff_eq_mode, u₀, tspan, get_ω2)
     sol = solve(prob, Vern9(), reltol=1e-12, abstol=1e-12, save_everystep=false, isoutofdomain=get_wronskian_domain, maxiters=1e7)
     χₑ = sol[1, end]
@@ -245,8 +245,8 @@ function save_all_every(data_dir)
     mkpath(data_dir)
     eom = deserialize(data_dir * "eom.dat")
 
-    num_k = 10 
-    k = @. logspace(-1, 1, num_k) * eom.aₑ * eom.Hₑ 
+    num_k = 5
+    k = @. logspace(0, 1, num_k) * eom.aₑ * eom.Hₑ 
     for ki in k
         N, n, err = solve_diff_mode_every(ki, eom)
         fn = @sprintf "%sk=%.1e.npz" data_dir ki/(eom.aₑ*eom.Hₑ)
@@ -297,12 +297,13 @@ function get_beta_bogo_spa(eom, k::Vector, model::Symbol, dn)
     # @info "a_e H_e / a H =" eom.aₑ * H_new[1] ./ (H_new .* a_new) 
     aH_e = a_new[1] * H_new[1]
    
-    N, indices, m_tilde, c_n, _ = get_four_coeff(num_j, t_new, V_new ./ ρ_new, dn)
+    N, indices, m_tilde, c_n = get_four_coeff(num_j, t_new, V_new ./ ρ_new, dn)
     # @show size(m_tilde), size(indices)
     # @info @sprintf "At first minimum: a/a_e = %e" a_new[indices[1]]/a_new[1]
     # @info @sprintf "At first minimum: m_tilde/H = %e" m_tilde[1] / H_new[1]
     @info @sprintf "At first minimum: k/a_e H_e = %e" a_new[indices[1]]/a_new[1] * m_tilde[1] / H_new[1]
     # @info m_tilde 
+    # @info c_n[end, :]
 
     m_fit, dm, ddm = Commons.get_m_fit(m_tilde, log.(a_new[indices[1:end-1]]), 
                                         H_new[indices[1:end-1]], 
@@ -331,18 +332,17 @@ function get_beta_bogo_spa(eom, k::Vector, model::Symbol, dn)
             ψ = 2 * (j * m_fit[i] * t_t_e[i] - X[i] * aH_e * τ_τ_e[i]) - sign(gpp) * π / 4
             # @show ψ
             
-            Y[i] = -3.0im/2 * (a_new[i2] * H_new[i2])^2 / (X[i] * aH_e) * c_n[1, j] * sqrt(2π/abs(gpp)) * exp(1.0im * ψ)
-            # TODO: potential improvement: use the real fourier coefficients instead of the first set. 
-            # Seems complicated as the index i corresponds to elements of X, which are not "properly" ordered.
+            # Y[i] = -3.0im/2 * (a_new[i2] * H_new[i2])^2 / (X[i] * aH_e) * c_n[1, j] * sqrt(2π/abs(gpp)) * exp(1.0im * ψ)
+            Y[i] = -3.0im/2 * a_new[i2]^2 * (ρ_new[i2] / 3) / (X[i] * aH_e) * c_n[i, j] * sqrt(2π/abs(gpp)) * exp(1.0im * ψ)
         end
         # @show size(X) size(Y)
         # @show X[1]
 
-        if j == 1
-            display(X)
+        # if j == 1
+            # display(X)
             # display(abs.(Y))
             # @info diff(X), diff(abs.(Y))
-        end
+        # end
 
         if model == :quadratic
             tmp = Interpolate(X, Y, extrapolate=LinearInterpolations.Constant(0.0)).(k)
@@ -370,6 +370,8 @@ function get_beta_bogo_spa(eom, k::Vector, model::Symbol, dn)
     return abs2.(β)
 end
 
+#=
+# dont need
 """
 use (almost) pure analytical expression for the beta using stationary point approximation
 """
@@ -427,9 +429,10 @@ function get_beta_bogo_spa_ana(eom, k::Vector, model::Symbol, dn)
     end
     return f
 end
+=#
 
 #######################################################################
-# Analytical Bogobiubov w\o slow contributions
+# integral to solve coefficients
 #######################################################################
 
 """
@@ -438,47 +441,75 @@ expect to only contain the fast contributions
 
 the commented-out part solves the differential equations instead; deliver the same result!
 """
-function get_beta_bogo_fast(eom, k::Vector)
+function _get_beta_bogo_fast_single(eom, k::Vector, aᵢ)
     # start from inflation
     # τ = eom.τ
 
     # start from end of inflation 
-    τ = eom.τ[eom.a .>= eom.aₑ]
+    # @show aᵢ
+    τ = eom.τ[eom.a .>= aᵢ]
     
     β = zeros(ComplexF64, size(k))
-    Threads.@threads for i in ProgressBar(eachindex(k))
-        if k[i] .< 2.5 * eom.aₑ * eom.Hₑ
-            β[i] = 0 
-        else
-            ω, dω, Ω = get_p_alpha(k[i], eom.τ, eom.app_a, eom.app_a_p)
-            integrand = t -> dω(t) / (2*ω(t)) * exp(-2.0im * Ω(t))
-            # integrand = t -> dω(t) / (2*k[i]) * exp(-2.0im * k[i] * t)
-            β[i], _ = quadgk(integrand, τ[1], τ[end], atol=1e-10)
-        end
+    Threads.@threads for i in eachindex(k)
+        ω, dω, Ω = get_p_alpha(k[i], eom.τ, eom.app_a, eom.app_a_p)
+        integrand = t -> dω(t) / (2*ω(t)) * exp(-2.0im * Ω(t))
+        # integrand = t -> dω(t) / (2*k[i]) * exp(-2.0im * k[i] * t)
+        β[i], _ = quadgk(integrand, τ[1], τ[end], atol=1e-10)
     end
     return β
-    
-    #=
-    if check_array(eom.app_a) | check_array(eom.app_a_p)
-        throw(ArgumentError("Input arrays contain NaN or Inf!"))
-    end
-
-    β = zeros(ComplexF64, size(k)) 
-    Threads.@threads for i in ProgressBar(eachindex(k))
-        p = get_p_alpha(k[i], eom.τ, eom.app_a, eom.app_a_p)
-        
-        tspan = [τ[1], τ[end]]
-        u₀ = SA[1.0 + 0.0im, 0.0+0.0im]
-
-        prob = ODEProblem{false}(get_diff_eq_alpha, u₀, tspan, p)
-        sol = solve(prob, Vern9(), reltol=1e-12, abstol=1e-12, save_everystep=false, maxiters=1e8, isoutofdomain=get_alpha_beta_domain)
-
-        β[i] = sol[2, end]
-    end
-
-    return β
-    =#
 end
+
+function save_beta_bogo_fast_all(data_dir)
+    @info data_dir
+    eom = deserialize(data_dir * "eom.dat")
+    
+    k = @. logspace(0, 1, 100) * eom.aₑ * eom.Hₑ
+    a_is = logrange(eom.a[1], eom.aₑ, 10)
+    mkpath(data_dir * "bogo_fast/")
+
+    for i in ProgressBar(eachindex(a_is))
+        fn = @sprintf "%sbogo_fast/spec_N=%.1f.npz" data_dir log(a_is[i])
+        # @show fn
+        β = _get_beta_bogo_fast_single(eom, k, a_is[i])
+        npzwrite(fn, Dict(
+            "k" => k ./ eom.aₑ / eom.Hₑ,
+            "f" => abs2.(β),
+        ))
+    end
+
+    return nothing
+end
+
+"""
+use the integral to get the bogo. coefficients.
+here want to terminate the integral at the end of inflation
+"""
+function save_beta_bogo_fast_end(data_dir)
+    eom = deserialize(data_dir * "eom.dat")
+    τ = eom.τ[eom.a .<= eom.aₑ]
+    
+    k = @. logspace(0, 1, 100) * eom.aₑ * eom.Hₑ
+    β = zeros(ComplexF64, size(k))
+    error = zeros(ComplexF64, size(k))
+    Threads.@threads for i in eachindex(k)
+        ω, dω, Ω = get_p_alpha(k[i], eom.τ, eom.app_a, eom.app_a_p)
+        integrand = t -> dω(t) / (2*ω(t)) * exp(-2.0im * Ω(t))
+        # integrand = t -> dω(t) / (2*k[i]) * exp(-2.0im * k[i] * t)
+        β[i], error[i] = quadgk(integrand, τ[1], τ[end], atol=1e-10)
+    end
+    @show error
+
+    fn = @sprintf "%sspec_bogo_end.npz" data_dir
+    npzwrite(fn, Dict(
+        "k" => k ./ eom.aₑ / eom.Hₑ,
+        "f" => abs2.(β),
+    ))
+    return nothing
+end
+
+#######################################################################
+# Analytical Bogobiubov w\o slow contributions
+#######################################################################
 
 """
 transitional production 
@@ -508,6 +539,68 @@ function get_beta_bogo_trans(k::Vector, model)
     return β
 end
 
+#######################################################################
+# Bogoliubov method using a numerical fit for the a''/a
+#######################################################################
+
+function _get_conf_H_fit(x, Δx, ω, Ht)
+    return 1/(((3*ω + 3)/4*tanh(x/Δx)+(3*ω-1)/4)*x/Ht + 1/Ht)
+end
+
+function _get_transition_V(x, Δx, ω, Ht)
+    H = _get_conf_H_fit(x, Δx, ω, Ht)
+    t = tanh(x/Δx)
+    dH = -H^2 * (3*(ω+1)/4 * ((1-t^2)*x/Δx + t) + (3*ω-1)/4)
+    return (dH + H^2)/Ht^2
+end
+
+"""
+k should be in mpl unit
+"""
+function solve_beta_bogo_fit(eom, k::Real, model)
+    if model == :quartic 
+        ω = 1//2
+    else 
+        return UndefVarError
+    end
+
+    # conf_H = eom.H * eom.a
+    conf_Ht = eom.Hₑ * eom.aₑ
+    τ = eom.τ 
+    Δx = 1.08
+
+    tspan = [τ[1], τ[end]]
+    get_ω2 = x -> k^2 - _get_transition_V(x, Δx*conf_Ht, ω, conf_Ht) * conf_Ht^2
+    ω₀ = sqrt(get_ω2(tspan[1])+0.0im)
+    ωₑ = sqrt(get_ω2(tspan[2])+0.0im)
+    u0 = @SVector [1/sqrt(2*ω₀), -1.0im*ω₀/sqrt(2*ω₀)] 
+
+    prob = ODEProblem(get_diff_eq_mode, u0, tspan, get_ω2)
+    sol = solve(prob, Vern9(), reltol=1e-9, abstol=1e-9, save_everystep=false, isoutofdomain=get_wronskian_domain, maxiters=1e7)
+
+    χₑ = sol[1, end]
+    ∂χₑ = sol[2, end]
+
+    # wronskian
+    err = 1 + 1.0im * get_wronskian(χₑ, ∂χₑ)
+
+    n = _get_f(ωₑ, χₑ, ∂χₑ)
+    # ρ = n * ωₑ* k^3 / π^2
+    
+    # @show k, n, err
+
+    return n, err
+end
+
+function get_beta_bogo_fit(eom, k::Vector, model)
+    n = zeros(size(k))
+    err = zeros(size(k))
+    Threads.@threads for i in ProgressBar(eachindex(k))
+        n[i], err[i] = solve_beta_bogo_fit(eom, k[i], model)
+    end
+    @show k, n, err
+    return n
+end
 
 function save_all_ana(num_k, data_dir, model, log_k_i=0, log_k_f=2)
     @info data_dir
@@ -515,29 +608,21 @@ function save_all_ana(num_k, data_dir, model, log_k_i=0, log_k_f=2)
 
     k = @. logspace(log_k_i, log_k_f, num_k) * eom.aₑ * eom.Hₑ
     f_spa = @time get_beta_bogo_spa(eom, k / eom.aₑ / eom.Hₑ, model, data_dir)
-    f_spa_ana = @time get_beta_bogo_spa_ana(eom, k, model, data_dir)
+    f_fit = @time get_beta_bogo_fit(eom, k, model)
+    # f_spa_ana = @time get_beta_bogo_spa_ana(eom, k, model, data_dir)
     # β_fast = @time get_beta_bogo_fast(eom, k)
     # β_trans = @time get_beta_bogo_trans(k / eom.aₑ / eom.Hₑ, model)
     # Main.@infiltrate
-
+    
     fn = data_dir * "spec_bogo_ana.npz" 
-    if f_spa_ana == false 
-        npzwrite(fn, Dict(
-            "k" => k ./ eom.aₑ / eom.Hₑ,
-            "f_spa" => f_spa,
-            # "f_fast" => abs2.(β_fast),
-            # "f_comb" => abs2.(β_fast .+ β_trans)
-        ))
-    else
-        npzwrite(fn, Dict(
-            "k" => k ./ eom.aₑ / eom.Hₑ,
-            "f_spa" => f_spa,
-            "f_spa_ana" => f_spa_ana,
-            # "f_fast" => abs2.(β_fast),
-            # "f_comb" => abs2.(β_fast .+ β_trans)
-        ))
-    end
-
+    npzwrite(fn, Dict(
+        "k" => k ./ eom.aₑ / eom.Hₑ,
+        "f_spa" => f_spa,
+        "f_fit" => f_fit,
+        # "f_fast" => abs2.(β_fast),
+        # "f_comb" => abs2.(β_fast .+ β_trans)
+    ))
+ 
     return nothing
 end
 

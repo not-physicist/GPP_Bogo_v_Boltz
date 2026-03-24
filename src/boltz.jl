@@ -46,8 +46,12 @@ function get_f(eom, k::Vector, model::Symbol, dn, single=false)
     # @show a_new[1], H_new[1]
     # @info "a_e H_e / a H =" eom.aₑ * H_new[1] ./ (H_new .* a_new) 
     
-    N, indices, m_tilde, c_n, mdm2 = Commons.get_four_coeff(num_j, t_new, V_new ./ ρ_new, dn)
+    N, indices, m_tilde, c_n = Commons.get_four_coeff(num_j, t_new, V_new ./ ρ_new, dn)
     # @show size(indices) size(ωj) size(ωpω2)
+    m_fit, dm, ddm = Commons.get_m_fit(m_tilde, log.(a_new[indices[1:end-1]]), 
+                                    H_new[indices[1:end-1]], 
+                                    (diff(H_new)./diff(t_new))[indices[1:end-1]])
+    mdm2 = @. dm / m_fit^2
     # @show mdm2
     
     #=

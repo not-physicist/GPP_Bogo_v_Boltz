@@ -139,8 +139,8 @@ function solve_eom(u₀::SVector{4, Float64},
     affect!(integrator) = terminate!(integrator)
     cb = DiscreteCallback(condition, affect!)
     prob = ODEProblem(_get_f, u₀, tspan, (p[1], p[2], 0.0, p[4]))
-    sol = @time solve(prob, Vern9(), isoutofdomain=_H_neg, reltol=1e-15, abstol=1e-15, callback=cb, dtmax=dtmax)
-    # sol = solve(prob, RK4(), isoutofdomain=_H_neg, reltol=1e-9, abstol=1e-9, callback=cb, dtmax=dtmax)
+    # sol = @time solve(prob, RK4(), isoutofdomain=_H_neg, reltol=1e-15, abstol=1e-15, callback=cb, dtmax=dtmax)
+    sol = solve(prob, RK4(), isoutofdomain=_H_neg, reltol=1e-12, abstol=1e-12, callback=cb, dtmax=dtmax)
     # @info sol[1, end]
     
     # callback: terminate at ρ_ϕ / ρ_tot = 1e-3
@@ -152,7 +152,7 @@ function solve_eom(u₀::SVector{4, Float64},
     u₁ = SA[sol[1, end], sol[2, end], sol[3, end], sol[4, end]]
     tspan2 = (sol.t[end], tspan[2])
     prob = ODEProblem(_get_f, u₁, tspan2, p)
-    # sol2 = solve(prob, Vern9(), isoutofdomain=_H_neg, reltol=1e-15, abstol=1e-15, callback=cb2, dtmax=dtmax, save_start=false)
+    # sol2 = solve(prob, Vern9(), isoutofdomain=_H_neg, reltol=1e-12, abstol=1e-12, callback=cb2, dtmax=dtmax, save_start=false)
     sol2 = @time solve(prob, RK4(), isoutofdomain=_H_neg, reltol=1e-12, abstol=1e-12, callback=cb2, dtmax=dtmax, save_start=false, maxiters=1e8)
     # @show sol[3, 1]
     
@@ -250,9 +250,9 @@ struct to store the ODE data;
 note that they may have different length (due to the derivatives)
 """
 struct EOMData{V<:Vector, F<:Real}
-    η::V
-    τ::V
-    t::V 
+    η::V  # α-conformal time
+    τ::V  # conformal time
+    t::V  # cosmic time
 
     ϕ::V
     dϕ::V

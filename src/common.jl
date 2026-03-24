@@ -73,7 +73,7 @@ function _get_c_n(x_min, x_max, y_itp, n::Int)
     
     res = quadgk(k -> y_itp(k)*exp(-1.0im*ω*k)/P, x_min, x_max)
     # @show res
-    return abs(res[1])
+    return res[1]
 end
 
 """
@@ -104,7 +104,7 @@ function get_four_coeff(num_j, t, V_ρ, dn)
     end
 
     m_tilde = zeros(Float64, (N,))
-    c_n = zeros(Float64, (N, num_j))
+    c_n = zeros(ComplexF64, (N, num_j))
     @time Threads.@threads for i in ProgressBar(1:N)
         i1 = indices[i]
         i2 = indices[i+1]
@@ -133,7 +133,7 @@ function get_four_coeff(num_j, t, V_ρ, dn)
         =#
     end
     # dm/dt / m^2
-    mdm2 = get_deriv_BSpline(t[indices[1:end-1]], m_tilde, 3) ./ m_tilde .^2 
+    # mdm2 = get_deriv_BSpline(t[indices[1:end-1]], m_tilde, 3) ./ m_tilde .^2 
     
     #=
     # check the spline order
@@ -148,10 +148,11 @@ function get_four_coeff(num_j, t, V_ρ, dn)
     # Looks good!
     =#
     
-    serialize(fn, (N, indices, m_tilde, c_n, mdm2))
+    serialize(fn, (N, indices, m_tilde, c_n))
     npzwrite(dn * "four_coef.npz", Dict("c_n" => c_n))
 
-    return N, indices, m_tilde, c_n, mdm2
+    # return N, indices, m_tilde, c_n, mdm2
+    return N, indices, m_tilde, c_n
 end
 
 """
@@ -161,7 +162,7 @@ fit ̃m(t) and get its derivatives
 arguments: all have the same dimension (one point per oscillation)
 """
 function get_m_fit(m, N, H, dH)
-    @show size(m) size(N) size(H) size(dH)
+    # @show size(m) size(N) size(H) size(dH)
 
     # option 1: using BSpline to interpolate, BAD
     #=
@@ -185,7 +186,7 @@ function get_m_fit(m, N, H, dH)
     p = Polynomials.fit(N_N_e, log.(m_m0), 6); map(x -> round(x, digits=4), p)
     @show "Fitted polynomials: " p
     m_fit = @. exp(p.(N_N_e)) * m[1]
-    @info "Log10 of the relative error of m_tilde fitting at datapoints:" @. log10(abs((m - m_fit)/m))
+    # @info "Log10 of the relative error of m_tilde fitting at datapoints:" @. log10(abs((m - m_fit)/m))
     
     dm = @. derivative(p).(N_N_e) * ( exp(p(N_N_e)) * m[1] * H)
     # @info "Log10 of the relative error of dm/dt_fit at datapoints" @. log10(abs.((dm - dm_dt_fit)/dm))

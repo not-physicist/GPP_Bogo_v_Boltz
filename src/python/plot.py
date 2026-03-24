@@ -1,11 +1,14 @@
 import numpy as np
 from scipy.ndimage import gaussian_filter1d
 from scipy.optimize import curve_fit
+from scipy.signal import find_peaks
  
 from matplotlib.patches import bbox_artist
 import matplotlib.pyplot as plt
 from matplotlib import colormaps
+from matplotlib import cm
 from matplotlib import rc
+from scipy.signal.windows import gaussian
 rc('font',**{'family':'sans-serif','sans-serif':['Helvetica']})
 rc('text', usetex=True)
 
@@ -40,7 +43,7 @@ def plot_back_single(dn):
     fn = join(dn, "eom.npz")
     data = np.load(fn)
 
-    t = data["tau"]
+    tau = data["tau"]
     a = data["a"]
     H = data["H"]
     app_a = data["app_a"]
@@ -139,11 +142,11 @@ def plot_back_single(dn):
     ###############################
     # a''/a and H
     ###############################
-    fig, (ax, ax2, ax3) = plt.subplots(ncols=3, figsize=(8, 4))
-    ax.plot(N, app_a, c="k")
+    fig, (ax, ax2) = plt.subplots(ncols=2, figsize=(8, 4))
+    ax.plot(N, app_a/a**2, c="k")
     ax.plot([N[0], N[-1]], [a_e*H_e, a_e*H_e], c="k")
     ax.set_xlabel(r"$\ln(a)$")
-    ax.set_ylabel(r"$a''/a$")
+    ax.set_ylabel(r"$a''/a^3/m_{pl}^2$")
     ax.set_yscale("log")
 
     ax2.plot(N, H, c="k")
@@ -160,15 +163,32 @@ def plot_back_single(dn):
     # (a''/a)' 
     ###############################
     fig, ax= plt.subplots(figsize=(5, 4))
+    
+    # divide by aH -> d(a''/a)/dN
+    # ax.plot(N, app_a_p / (a * H), c="k")
+    # dR = abs(1/6 * (app_a_p - 2 * app_a * a*H)/a**2/(a*H))
+    # dR = abs(1/6 * (app_a_p - 2 * app_a * a*H)/a**2)
+    # ax.plot(N, dR, c="k")
+    
+    # for k, c in zip([0.1, 1.0, 10.0], ["tab:blue", "tab:orange", "tab:red"]):
+    #     dω_ω2 = app_a_p / ((k*a_e*H_e)**2 - app_a)
+    #     ax.plot(N, dω_ω2, label=f"$k={k}/a_e H_e$", c=c)
+    #     ax.plot(N, -dω_ω2, c=c, ls="--")
+    # ax.set_ylabel(r"$\omega'_k/\omega_k^2$")
 
-    ax.plot(N, app_a_p / (a * H), c="k")
-    ax.plot(np.log([a_e, a_e]), [0, 1],  c="k", alpha=0.5, ls="--")
-    ax.set_xlabel(r"$N=\ln(a)$")
-    ax.set_ylabel(r"$(a''/a)'/ m_{\textrm{pl}}^3$")
+    tau_e = tau[np.argwhere(a_e*H_e == a * H)[0]]
+    ax.plot((tau-tau_e) * a_e * H_e, app_a_p/(a_e*H_e)**2, c="tab:blue")
+    ax.plot((tau-tau_e) * a_e * H_e, -app_a_p/(a_e*H_e)**2, c="tab:blue", ls="--")
+
+    # ax.plot(np.log([a_e, a_e]), [0, 10],  c="k", ls="--")
+    ax.set_xlabel(r"$ (\tau - \tau_e) \cdot (a_e  H_e)$")
+    ax.set_ylabel(r"$a''/a \cdot (a_e H_e)^{-2}$")
     ax.set_yscale("log")
     
-    ax.set_ylim((1e-5, 5e-1))
+    ax.set_xlim((-20, 20))
+    ax.set_ylim((1e-5, 1e-1))
     plt.tight_layout()
+    # plt.legend()
     fig_fn = join(out_dn, "app_a_p.pdf")
     plt.savefig(fig_fn, bbox_inches="tight")
     plt.close()
@@ -253,19 +273,33 @@ def plot_spec_single(dn):
     plt.close(fig=fig)
     
     ####################################################
-    fig, ax = plt.subplots(figsize=(4, 3))
+    fig, ax = plt.subplots(figsize=(5, 4))
 
-    ax.plot(k, n, label="Bogo.", color="k")
-    ax.plot(k_boltz[mask], f_boltz[mask], color="tab:orange", ls="--", label="exact Boltz.")
+    ax.plot(k, n, label="Bogoliubov (exact)", color="k")
+    # ax.plot(k_boltz[mask], f_boltz[mask], color="tab:orange", ls="--", label="exact Boltz.")
     try:
         fn = join(dn, "spec_bogo_ana.npz")
         data = np.load(fn)
-        # ax.plot(k_boltz[mask], f_boltz[mask], color="tab:orange", ls="--", label="exact Boltz.")
-        ax.plot(data["k"], data["f_spa"], label="s.p.a.")
+        ax.plot(k_boltz[mask], f_boltz[mask], color="tab:orange", ls="--", label="Boltzmann (exact)")
+        ax.plot(data["k"], data["f_spa"], label="oscillation (SPA)")
         # ax.plot(data["k"], data["f_fast"], color="tab:red", ls="dotted", label="fast Bogo.")
         # ax.plot(data["k"], data["f_comb"], color="tab:purple", ls="dotted", label="comb.")
-        # ax.plot(data["k"], formula.get_f_ana_slow(data["k"], 1/2), color="tab:red", ls="dashed", label="slow Bogo.")
         draw_Boltzmann_single_j(dn, ax)
+
+        # Fit transition contribution
+        # mask = (k > 3) & (k < 10)
+        # popt, pcov = curve_fit(lambda x, a: formula.get_f_ana_slow(x, 1/2, a), k[mask], n[mask])
+        # ax.plot(data["k"], formula.get_f_ana_slow(data["k"], 1/2, popt[0]), color="tab:red", ls="dashed", label="transition")
+        # print(popt, pcov)
+
+        # Transition, integral 
+        # k_tran = np.logspace(0, 1, 100, base=10)
+        # f_tran = [formula.get_f_transition_int(x, 1/2, 1.0, 0.0156530237660385) for x in k_tran]
+        # ax.plot(k, f_tran, color="tab:orange")
+
+        # ax.plot(data["k"], data["f_fit"], label="fit")
+        ax.plot(data["k"], formula.get_f_transition(data["k"], 0.5, 4), color="tab:red", ls="--", label="transition (approx.)")
+
     except FileNotFoundError:
         pass
 
@@ -274,8 +308,9 @@ def plot_spec_single(dn):
     ax.set_xscale("log")
     ax.set_yscale("log")
     ax.set_xlim((1e-1, 1e2))
-    ax.set_ylim((1e-15, 1e5))
+    ax.set_ylim((1e-12, 1e5))
     ax.legend(loc="upper right")
+    ax.set_title("$n=4$")
 
     fig.tight_layout()
     out_dn = dn.replace("data", "figs")
@@ -306,7 +341,8 @@ def draw_spec(dn, AX, AX2, label_pref, m_phi, Γ, c, ls):
     a_rh = data_eom["a_rh"]
     H = data_eom["H"]
     ρ_ϕ = data_eom["Omega_phi"] * 3 * H**2
-     
+        
+    '''
     try:
         # try to read out m_eff
         m_eff = data_eom["m_eff"]
@@ -314,10 +350,13 @@ def draw_spec(dn, AX, AX2, label_pref, m_phi, Γ, c, ls):
     except KeyError:
         # if not found, then no m_eff, just use m_phi
         f_exact_boltz = formula.get_f_exact_boltz(k, a, ρ_ϕ, H, m_phi, a_e, H_e)
+    '''
+    f_exact_boltz = formula.get_f_exact_boltz(k, a, ρ_ϕ, H, m_phi, a_e, H_e)
+
     mask = f_exact_boltz > 0.0
 
-    AX.plot(k, n, ls=ls, color=c, label=label_pref+"Bogo.")
-    AX.plot(k[mask], f_exact_boltz[mask], color="tab:cyan", ls="dotted", label="approx. Boltz.")
+    # AX.plot(k[mask], f_exact_boltz[mask], color="tab:cyan", ls="dotted", label="Boltzmann (approx.)")
+    AX.plot(k, n, ls=ls, color=c, label=label_pref+"Bogoliubov (exact)")
     # AX.plot(k[mask], f_exact_boltz[mask], color=c, label="approx. Boltz.")
  
     try:
@@ -330,13 +369,14 @@ def draw_spec(dn, AX, AX2, label_pref, m_phi, Γ, c, ls):
         k_ex_boltz = data["k"]
         f_ex_boltz = data["f"]
         mask = f_ex_boltz > 0.0
-        AX.plot(k_ex_boltz[mask], f_ex_boltz[mask], color="tab:orange", ls="dotted", label=label_pref + "exact Boltz.")
-    
+        AX.plot(k_ex_boltz[mask], f_ex_boltz[mask], color="tab:orange", ls="dotted", label=label_pref + "Boltzmann (exact)")
 
     if AX2 is not None:
         f = formula.get_f(k, a_e/a_rh, H_e, Γ)
         Ω = formula.get_Ω_gw0(ρ, a_e/a_rh, H_e, Γ)
         AX2.plot(f, Ω, label=label_pref, color=c, ls=ls)
+
+    AX.plot(k[k>3], formula.get_f_ana(k[k>3], H_e, m_phi, Γ), color="tab:cyan", label="approximates", ls="--", linewidth=1, alpha=0.8)
 
     return None
 
@@ -347,7 +387,7 @@ def _get_r_T_list(fn):
     # read the directory name first
     x = fn.split("/")[3]
     r, T = x.replace("r=", "").split("-T=")
-    return r, T
+    return float(r), float(T)
 
 """
 compare beta^2 for quadratic with varied reheating temp
@@ -357,7 +397,7 @@ def plot_all_quadratic(dns):
     # print(_get_r_T_list(dns))
     
     # for ρ_k plot
-    fig = plt.figure(figsize=(4,3))
+    fig = plt.figure(figsize=(5,4))
     ax = fig.add_subplot()
 
     # get color from m_array
@@ -367,8 +407,9 @@ def plot_all_quadratic(dns):
     
     for dn in dns:
         r, T = _get_r_T_list(dn)
-        m = 4.6e-6
-        Γ = 0.0
+        # print(r, T)
+        m = 4.5843577098302154e-6
+        Γ = formula.get_Γ(T)
         draw_spec(dn, ax, None, "", m, Γ, "k", "-")
   
     ax.set_xlabel(r"$k/a_e H_e$")
@@ -377,6 +418,11 @@ def plot_all_quadratic(dns):
     ax.set_yscale("log")
     ax.set_xlim(1, 4e2)
     ax.set_ylim(1e-12, 1e1)
+    ax.set_title("$n=2$")
+
+    ax.text(30, 1e-11, r"$10^{-4}$", rotation=-60)
+    ax.text(70, 1e-11, r"$5 \cdot 10^{-4}$", rotation=-60)
+    ax.text(50, 3e-10, r"$T_\textrm{rh}/m_\textrm{pl} = 10^{-5}$", rotation=-40)
     
     # only showing first three handles; avoid duplicates
     handles, labels = ax.get_legend_handles_labels()
@@ -387,19 +433,6 @@ def plot_all_quadratic(dns):
     fig.tight_layout()
     fig.savefig("../figs/TModel-n=2/spec_all.pdf", bbox_inches="tight")
     plt.close(1)
-    
-    """
-    ax2.set_xlabel("$f/Hz$")
-    ax2.set_ylabel(r"$\Omega_{gw, 0}h^2 $")
-    ax2.set_xscale("log")
-    ax2.set_yscale("log")
-    ax2.set_ylim(1e-33, 1e-24)
-    ax2.legend(loc="upper right")
-
-    fig2.tight_layout()
-    fig2.savefig(dn.replace("data", "figs") + "GW_spec_all.pdf", bbox_inches="tight")
-    plt.close(2)
-    """
 
 def check_H(dn):
     fn = join(dn, "eom.npz")
@@ -513,21 +546,37 @@ def plot_comp_chaotic_tmodel():
 plot β^2 evolution
 """
 def plot_k_every(dn):
-    fns = [x for x in listdir(dn) if x not in ["eom.npz", "eom.dat", "spec.npz"]]
+    ode_fn = join(dn, "eom.npz")
+    N_e = np.log(np.load(ode_fn)["a_e"])
+    # print(N_e)
+
+    fns = [x for x in listdir(dn) if "k=" in x]
+    ks = [float(fn.replace("k=", "").replace(".npz", "")) for fn in fns]
     # print(fns)
     
-    fig, ax = plt.subplots()
-    for fn in fns:
-        k = float(fn.replace("k=", "").replace(".npz", ""))
+    fig, ax = plt.subplots(figsize=(4, 3))
+    # ax.plot([0, 0], [0.0, 1e5], ls="--", color="gray")
+    cmap = colormaps["viridis"]
+
+    for i, fn in enumerate(fns):
+        c = cmap(ks[i]/np.amax(ks))
+
         full_path = join(dn, fn)
         # print(full_path, k)
         data = np.load(full_path)
-
-        ax.plot(data["N"], data["n"], c="k")
-        ax.plot(data["N"], data["error"], c="gray")
     
-    ax.set_xlabel("$N$")
+        label = f"$k={ks[i]} \, a_e H_e$"
+        ax.plot(data["N"]-N_e, data["n"], c=c)
+        # ax.plot(data["N"], data["error"], c="gray")
+    
+    fig.colorbar(cm.ScalarMappable(norm=plt.Normalize(vmin=np.amin(ks), vmax=np.amax(ks)), cmap=cmap), ax=ax, label=r"$k/a_eH_e$")
+
+    ax.set_xlim((-4, 4))
+    ax.set_ylim((1e-14, 1e2))
+    ax.set_xlabel(r"$N=\ln(a/a_e)$")
+    ax.set_ylabel(r"$|\beta_k|^2$")
     ax.set_yscale("log")
+    # ax.legend(loc=2)
     fig.tight_layout()
 
     out_dn = dn.replace("data", "figs")
@@ -547,10 +596,10 @@ def plot_all_n():
     Ts = [1e-5, 1e-5, 1e-5]
 
     colors = ["tab:blue", "tab:red", "tab:orange"]
-    ls = ["solid", "dotted"]
+    # ls = ["solid", "dotted"]
 
-    fig, ax = plt.subplots()
     for i, r in enumerate(rs):
+        fig, ax = plt.subplots(figsize=(4,3))
         for j, (n, T) in enumerate(zip(ns, Ts)):
             dn = f"../data/TModel-n={n}/r={r:.1e}-T={T:.1e}/"
 
@@ -575,17 +624,19 @@ def plot_all_n():
             Ω = formula.get_Ω_gw0(ρ, a_e/a_rh, H_e, T)
         
             n = dn.split("/")[2][-1]
-            ax.plot(f, Ω, label=f"$n={n}$", color=colors[j], ls=ls[i])
+            ax.plot(f, Ω, label=f"$n={n}$", color=colors[j])
             print(50*"-")
     
-    ax.set_xscale("log")
-    ax.set_yscale("log")
-    ax.set_ylim((1e-20, 1e-10))
-    ax.set_xlabel(r"$f/\textrm{Hz}$")
-    ax.set_ylabel(r"$\Omega_{\textrm{GW}, 0} h^2$")
-    plt.legend()
-    plt.savefig("../figs/Omega_all_n.pdf", bbox_inches="tight")
-    plt.close()
+        ax.set_xscale("log")
+        ax.set_yscale("log")
+        ax.set_ylim((1e-20, 1e-10))
+        ax.set_xlim((5e5, 2e10))
+        ax.set_xlabel(r"$f/\textrm{Hz}$")
+        ax.set_ylabel(r"$\Omega_{\textrm{GW}, 0} h^2$")
+        plt.legend()
+        out_fn = f"../figs/Omega_all_n_r={r}.pdf"
+        plt.savefig(out_fn, bbox_inches="tight")
+        plt.close()
 
 def compare_k_rh():
     Ts = [1e-04, 1e-05]
@@ -631,7 +682,7 @@ def compare_k_rh():
     ax.set_xscale("log")
     ax.set_yscale("log")
     ax.set_xlabel("$k/a_eH_e$")
-    ax.set_ylabel(r"$\rho_k = |\beta_k|^2 k^4/\pi^2 $")
+    ax.set_ylabel(r"$|\beta_k|^2 k^4/\pi^2 $")
     # ax.set_xlabel(r"$f / \textrm{Hz}$")
     # ax.set_ylabel(r"$\Omega_{\textrm{GW}, 0}h^2$")
     ax.set_ylim((1e-9, 1e2))
@@ -726,10 +777,165 @@ def plot_fourier(dn):
     plt.plot(np.log(data["c_n"]))
     plt.savefig(dn.replace("data", "figs")+"four_coef.pdf")
 
+def plot_bogo_fast_all(dn):
+    dn_full = join(dn, "bogo_fast")
+    fn_prefix = "spec_N="
+    fns = [x for x in listdir(dn_full) if fn_prefix in x]
+    Ns = [float(x.replace(fn_prefix, "").replace(".npz", "")) for x in fns]
+    Ns, fns = (list(t) for t in zip(*sorted(zip(Ns, fns))))
+    # print(Ns, fns)
+    Ns = [x - Ns[-1] for x in Ns]
+    
+    fig, ax = plt.subplots(figsize=(4, 3))
+    cmap = colormaps["magma"]
+
+    for i, N in enumerate(Ns):
+        data = np.load(join(dn_full, fns[i]))
+        c = cmap(i/len(Ns))
+        ax.plot(data['k'], data['f'], c=c)
+    
+    fn = join(dn, "spec_bogo_end.npz")
+    data = np.load(fn)
+    ax.plot(data["k"], data["f"], color="tab:blue", ls="--")
+
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.set_xlabel(f"$k/a_e H_e$")
+    ax.set_ylabel(r"$|\beta_k|^2$")
+    fig.colorbar(cm.ScalarMappable(norm=plt.Normalize(vmin=Ns[0], vmax=Ns[-1]), cmap=cmap), ax=ax, label=r"$N = \ln(a_i/a_e)$")
+    
+    out_fn = join(dn.replace("data", "figs"), "bogo_fast_all.pdf")
+    plt.savefig(out_fn, bbox_inches="tight")
+    plt.close()
+
+
+def plot_conf_H(dn):
+    fn = join(dn, "eom.npz")
+    data = np.load(fn)
+
+    tau = data["tau"]
+    a = data["a"]
+    H = data["H"]
+    ω = 1/2
+
+    conf_H = a*H
+    conf_Ht = np.amax(conf_H)
+    print("H_t = ", conf_Ht)
+    tau_t = tau[np.argwhere(conf_H == conf_Ht)[0]]
+    print("a_e=", data["a_e"], ", a_t=", a[np.argwhere(conf_H == conf_Ht)[0]])
+
+    fig, ax = plt.subplots(figsize=(4, 3))
+
+    ax.plot((tau-tau_t)*conf_Ht, conf_H/conf_Ht, color="k", label=r"$\mathcal{H}/\mathcal{H}_t$")
+
+    # Fitting 
+    popt, pcov = curve_fit(lambda x, a:formula._get_conf_H_fit(x, a, ω, conf_Ht), (tau-tau_t)*conf_Ht, conf_H)
+    # print(popt, pcov)
+    conf_H_fit = formula._get_conf_H_fit((tau-tau_t)*conf_Ht, popt[0], ω, conf_Ht)
+    Δx_fit = popt[0]
+    print("Best fit Δx = ", Δx_fit)
+    ax.plot((tau-tau_t)*conf_Ht, conf_H_fit/conf_Ht, color="k", ls="dotted", label=r"$\mathcal{H}/\mathcal{H}_t$, fit")
+
+    dH = np.diff(conf_H) / np.diff(tau)
+    V = (dH + conf_H[:-1]**2)/conf_Ht**2
+    # dH = np.diff(conf_H_fit) / np.diff(tau)
+    # V = (dH + conf_H_fit[:-1]**2)/conf_Ht**2
+    ax.plot((tau-tau_t)[:-1]*conf_Ht, V, color="tab:blue", label="$V$")
+    ax.plot((tau-tau_t)*conf_Ht, formula._get_transition_V((tau-tau_t)*conf_Ht, Δx_fit, 1/2, conf_Ht), color="tab:blue", ls="dotted", label="$V$, fit")
+
+    ax.set_xlim((-20, 20))
+    ax.set_xlabel(r"$\tau \cdot \mathcal{H}_t$")
+    # ax.set_ylabel(r"$\mathcal{H}/\mathcal{H}_t$")
+    ax.legend()
+
+    out_dn = dn.replace("data", "figs")
+    Path(out_dn).mkdir(parents=True, exist_ok=True)
+    fig_fn = join(out_dn, "conf_H.pdf")
+    plt.savefig(fig_fn, bbox_inches="tight")
+    plt.close()
+
+
+def plot_F_fit(dn):
+    fn = join(dn, "eom.npz")
+    data = np.load(fn)
+
+    tau = data["tau"]
+    a = data["a"]
+    H = data["H"]
+    ω = 1/2
+    app_a = data["app_a"]
+    aH_e = data["a_e"] * data["H_e"]
+
+    fig, ax = plt.subplots(figsize=(4, 3))
+
+    X = np.linspace(-10, 10, 1000)
+    def _f(x, a, b, c): 
+        return -a/np.cosh((x+b)/c)**2
+    
+    tau_e = tau[np.argwhere(a == data["a_e"])[0]]
+    x = (tau-tau_e)*aH_e
+    y = app_a/(aH_e)**2
+    y2 = data["app_a_p"]/(aH_e)**3
+    y3 = a*H / aH_e
+    # mask = [(x > -20) & (x < 0)][0]
+
+    # popt, pcov = curve_fit(_f, x[mask] , y[mask])
+    # print(popt, pcov)
+    # ax.plot(X,_f(X, *popt), label="fit")
+    
+    ax.plot(x, y, c="k", label=r"$F/(a_e H_e)^2$")
+    ax.plot(x, y2, c="tab:blue", label=r"$F'/(a_e H_e)^3$")
+    # ax.plot(x, y3, color="tab:red", label=r"$\mathcal{H}/(a_e H_e)$")
+    # ax.plot(x[:-2], np.diff(np.diff(formula._get_conf_H_fit(x, 1.0, 1.2, aH_e)/aH_e)/np.diff(x))/np.diff(x)[:-1])
+    # ax.plot(x, data["w"])
+    
+    ## Find peaks 
+    # peaks, _ = find_peaks( data["w"])
+    # print(peaks)
+    # ax.scatter(x[peaks], y[peaks], color="red")
+    # print(peaks[2] - peaks[0])
+
+    # smoothing 
+    # sigma = np.zeros(x.shape[0])
+    # print(sigma)
+    # smooth_y = gaussian_filter1d(y, sigma=sigma)
+    # ax.plot(x[x>x[peaks[0]]], gaussian_filter1d(y[x>x[peaks[0]]], peaks[2]-peaks[0]), c="k", label=r"$F/\mathcal{H}_e^2$")
+    # ax.plot(x, smooth_y, color="k", ls="--")
+
+    # Y2 = gaussian_filter1d(np.interp(X, x, np.abs(y2)), 20)
+    # ax.plot(X, Y2 , c="tab:blue", label=r"$F'/\mathcal{H}_e^3$")
+
+    popt, pcov = curve_fit(_f, x , y2)
+    print(popt, pcov)
+    ax.plot(X,_f(X, *popt), label=r"fit, $1/\cosh^2$", color="tab:orange", ls="--")
+    # ax.plot(X,_f(X, popt[0], popt[1], -1.0), label=r"$\Delta \tau =0.6, 1/\cosh^2$", color="tab:orange", ls="--")
+
+    Δτ = 0.5
+    ax.plot(X, _f(X, 1/Δτ, popt[1], Δτ), color="tab:orange", label="Eq. $(4.30)$", linestyle="dashed")
+
+    ax.set_xlim((-10, 10))
+    ax.set_xlabel(r"$(\tau - \tau_e) \cdot a_e H_e$")
+    # ax.set_ylabel(r"$a''/a/(a_e H_e)^2$")
+    ax.legend()
+
+    out_dn = dn.replace("data", "figs")
+    Path(out_dn).mkdir(parents=True, exist_ok=True)
+    fig_fn = join(out_dn, "F_fit.pdf")
+    plt.savefig(fig_fn, bbox_inches="tight")
+    plt.close()
+
+# def plot_fast_end(dn):
+#    fn = join(dn, "spec_bogo_end.npz")
+#    data = np.load(fn)
+#    # print(data)
+#
+#    fig, ax = plt.subplots(figsize=(5, 4))
+#    ax.plot(data["k"], data["f"])
+
 if __name__ == "__main__":
     ################################## n = 2
     # dn = "../data/TModel-n=2/r=1.0e-01-T=1.0e-04/"
-    # dn = "../data/TModel-n=2/r=1.0e-02-T=1.0e-04/"
+    dn = "../data/TModel-n=2/r=1.0e-02-T=1.0e-04/"
     # dn = "../data/TModel-n=2/r=1.0e-03-T=1.0e-05/"
 
     ################################### n = 4
@@ -739,15 +945,22 @@ if __name__ == "__main__":
 
     ################################### n = 6
     # dn = "../data/TModel-n=6/r=1.0e-01-T=1.0e-05/"
-    dn = "../data/TModel-n=6/r=1.0e-02-T=1.0e-05/"
+    # dn = "../data/TModel-n=6/r=1.0e-02-T=1.0e-05/"
     # dn = "../data/TModel-n=6/r=1.0e-03-T=1.0e-05/"
+
     # plot_back_single(dn)
-    plot_spec_single(dn)
+    # plot_spec_single(dn)
     # plot_fourier(dn)
     # plot_Boltzmann_single_j(dn)
     # plot_mtilde(dn)
+    # plot_k_every(dn)
 
     # plot_all_quadratic([f"../data/TModel-n=2/r=1.0e-02-T={x}" for x in ["1.0e-04", "5.0e-05", "1.0e-05"]])
     
-    # compare_k_rh()
+    compare_k_rh()
     # plot_all_n()
+    # plot_bogo_fast_all(dn)
+
+    # plot_conf_H(dn)
+    # plot_F_fit(dn)
+    # plot_fast_end(dn)
