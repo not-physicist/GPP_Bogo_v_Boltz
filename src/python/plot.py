@@ -310,7 +310,7 @@ def plot_spec_single(dn):
     ax.set_xlim((1e-1, 1e2))
     ax.set_ylim((1e-12, 1e5))
     ax.legend(loc="upper right")
-    ax.set_title("$n=4$")
+    ax.set_title("$n=6$")
 
     fig.tight_layout()
     out_dn = dn.replace("data", "figs")
@@ -421,7 +421,7 @@ def plot_all_quadratic(dns):
     ax.set_title("$n=2$")
 
     ax.text(30, 1e-11, r"$10^{-4}$", rotation=-60)
-    ax.text(70, 1e-11, r"$5 \cdot 10^{-4}$", rotation=-60)
+    ax.text(70, 1e-11, r"$5 \cdot 10^{-5}$", rotation=-60)
     ax.text(50, 3e-10, r"$T_\textrm{rh}/m_\textrm{pl} = 10^{-5}$", rotation=-40)
     
     # only showing first three handles; avoid duplicates
@@ -565,7 +565,7 @@ def plot_k_every(dn):
         # print(full_path, k)
         data = np.load(full_path)
     
-        label = f"$k={ks[i]} \, a_e H_e$"
+        label = rf"$k={ks[i]} \, a_e H_e$"
         ax.plot(data["N"]-N_e, data["n"], c=c)
         # ax.plot(data["N"], data["error"], c="gray")
     
@@ -629,7 +629,7 @@ def plot_all_n():
     
         ax.set_xscale("log")
         ax.set_yscale("log")
-        ax.set_ylim((1e-20, 1e-10))
+        ax.set_ylim((1e-24, 1e-14))
         ax.set_xlim((5e5, 2e10))
         ax.set_xlabel(r"$f/\textrm{Hz}$")
         ax.set_ylabel(r"$\Omega_{\textrm{GW}, 0} h^2$")
@@ -682,7 +682,7 @@ def compare_k_rh():
     ax.set_xscale("log")
     ax.set_yscale("log")
     ax.set_xlabel("$k/a_eH_e$")
-    ax.set_ylabel(r"$|\beta_k|^2 k^4/\pi^2 $")
+    ax.set_ylabel(r"$\rho_{h,k}/(a_e H_e)^4$")
     # ax.set_xlabel(r"$f / \textrm{Hz}$")
     # ax.set_ylabel(r"$\Omega_{\textrm{GW}, 0}h^2$")
     ax.set_ylim((1e-9, 1e2))
@@ -785,24 +785,32 @@ def plot_bogo_fast_all(dn):
     Ns, fns = (list(t) for t in zip(*sorted(zip(Ns, fns))))
     # print(Ns, fns)
     Ns = [x - Ns[-1] for x in Ns]
-    
+
     fig, ax = plt.subplots(figsize=(4, 3))
     cmap = colormaps["magma"]
-
+    
     for i, N in enumerate(Ns):
         data = np.load(join(dn_full, fns[i]))
         c = cmap(i/len(Ns))
         ax.plot(data['k'], data['f'], c=c)
+
+    # colors = ["tab:blue", "tab:orange"]
+    # for i in [0, len(Ns)-1]:
+    #     data = np.load(join(dn_full, fns[i]))
+    #     ax.plot(data['k'], data['f'], label=rf"$N_i={Ns[i]}$")
     
-    fn = join(dn, "spec_bogo_end.npz")
-    data = np.load(fn)
-    ax.plot(data["k"], data["f"], color="tab:blue", ls="--")
+    # fn = join(dn, "spec_bogo_end.npz")
+    # data = np.load(fn)
+    # ax.plot(data["k"], data["f"], color="tab:blue", ls="--")
 
     ax.set_xscale("log")
     ax.set_yscale("log")
     ax.set_xlabel(f"$k/a_e H_e$")
     ax.set_ylabel(r"$|\beta_k|^2$")
-    fig.colorbar(cm.ScalarMappable(norm=plt.Normalize(vmin=Ns[0], vmax=Ns[-1]), cmap=cmap), ax=ax, label=r"$N = \ln(a_i/a_e)$")
+    # ax.set_ylim((1e-5, 1e-1))
+    ax.set_ylim((1e-13, 1e-1))
+    # plt.legend(loc=3)
+    fig.colorbar(cm.ScalarMappable(norm=plt.Normalize(vmin=Ns[0], vmax=Ns[-1]), cmap=cmap), ax=ax, label=r"$N_i = \ln(a_i/a_e)$")
     
     out_fn = join(dn.replace("data", "figs"), "bogo_fast_all.pdf")
     plt.savefig(out_fn, bbox_inches="tight")
@@ -885,7 +893,7 @@ def plot_F_fit(dn):
     
     ax.plot(x, y, c="k", label=r"$F/(a_e H_e)^2$")
     ax.plot(x, y2, c="tab:blue", label=r"$F'/(a_e H_e)^3$")
-    # ax.plot(x, y3, color="tab:red", label=r"$\mathcal{H}/(a_e H_e)$")
+    ax.plot(x, y3, color="tab:red", label=r"$aH/(a_e H_e)$")
     # ax.plot(x[:-2], np.diff(np.diff(formula._get_conf_H_fit(x, 1.0, 1.2, aH_e)/aH_e)/np.diff(x))/np.diff(x)[:-1])
     # ax.plot(x, data["w"])
     
@@ -907,11 +915,11 @@ def plot_F_fit(dn):
 
     popt, pcov = curve_fit(_f, x , y2)
     print(popt, pcov)
-    ax.plot(X,_f(X, *popt), label=r"fit, $1/\cosh^2$", color="tab:orange", ls="--")
+    # ax.plot(X,_f(X, *popt), label=r"fit, $1/\cosh^2$", color="tab:orange", ls="--")
     # ax.plot(X,_f(X, popt[0], popt[1], -1.0), label=r"$\Delta \tau =0.6, 1/\cosh^2$", color="tab:orange", ls="--")
 
     Δτ = 0.5
-    ax.plot(X, _f(X, 1/Δτ, popt[1], Δτ), color="tab:orange", label="Eq. $(4.30)$", linestyle="dashed")
+    ax.plot(X, _f(X, 1/Δτ, popt[1], Δτ), color="tab:orange", label="Eq. $(4.28)$", linestyle="dashed")
 
     ax.set_xlim((-10, 10))
     ax.set_xlabel(r"$(\tau - \tau_e) \cdot a_e H_e$")
@@ -924,18 +932,10 @@ def plot_F_fit(dn):
     plt.savefig(fig_fn, bbox_inches="tight")
     plt.close()
 
-# def plot_fast_end(dn):
-#    fn = join(dn, "spec_bogo_end.npz")
-#    data = np.load(fn)
-#    # print(data)
-#
-#    fig, ax = plt.subplots(figsize=(5, 4))
-#    ax.plot(data["k"], data["f"])
-
 if __name__ == "__main__":
     ################################## n = 2
     # dn = "../data/TModel-n=2/r=1.0e-01-T=1.0e-04/"
-    dn = "../data/TModel-n=2/r=1.0e-02-T=1.0e-04/"
+    # dn = "../data/TModel-n=2/r=1.0e-02-T=1.0e-04/"
     # dn = "../data/TModel-n=2/r=1.0e-03-T=1.0e-05/"
 
     ################################### n = 4
@@ -955,12 +955,11 @@ if __name__ == "__main__":
     # plot_mtilde(dn)
     # plot_k_every(dn)
 
-    # plot_all_quadratic([f"../data/TModel-n=2/r=1.0e-02-T={x}" for x in ["1.0e-04", "5.0e-05", "1.0e-05"]])
+    plot_all_quadratic([f"../data/TModel-n=2/r=1.0e-02-T={x}" for x in ["1.0e-04", "5.0e-05", "1.0e-05"]])
     
-    compare_k_rh()
+    # compare_k_rh()
     # plot_all_n()
     # plot_bogo_fast_all(dn)
 
     # plot_conf_H(dn)
     # plot_F_fit(dn)
-    # plot_fast_end(dn)

@@ -9,4 +9,5 @@ This repository contains
 
 ## Associated paper 
 
+Graviton Production from Inflaton Condensate: Boltzmann vs Bogoliubov: [2604.12687](https://arxiv.org/abs/2604.12687)
 
